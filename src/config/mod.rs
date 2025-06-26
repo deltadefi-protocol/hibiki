@@ -1,8 +1,10 @@
 use std::env::var;
+pub mod hydra;
 
 pub struct AppConfig {
     pub network_id: String,
     pub app_owner_mnemonic: String,
+    pub app_owner_vkey: String,
 }
 
 impl AppConfig {
@@ -10,6 +12,7 @@ impl AppConfig {
         AppConfig {
             network_id: var("NETWORK_ID").unwrap_or("0".to_string()),
             app_owner_mnemonic: var("APP_OWNER_SEED_PHRASE").unwrap(),
+            app_owner_vkey: var("OWNER_VKEY").unwrap_or("".to_string()),
         }
     }
 }
