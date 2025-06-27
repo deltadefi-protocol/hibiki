@@ -6,6 +6,8 @@ use whisky::{
 };
 
 use crate::{
+    config::AppConfig,
+    handler::sign_transaction,
     scripts::{
         hydra_account_balance_spending_blueprint, hydra_user_intent_minting_blueprint,
         hydra_user_intent_spending_blueprint, HydraAccountBalanceDatum, HydraUserIntentRedeemer,
@@ -18,6 +20,9 @@ use crate::{
 };
 
 pub fn handler(request: ProcessTransferRequest) -> Result<ProcessTransferResponse, WError> {
+    let AppConfig { app_owner_vkey, .. } = AppConfig::new();
+
+    let colleteral = from_proto_utxo(request.collateral_utxo.as_ref().unwrap());
     let ref_input = from_proto_txin(request.dex_order_book_input.as_ref().unwrap());
     let intent_utxo = from_proto_utxo(request.transferral_intent_utxo.as_ref().unwrap());
     let from_account = UserAccount::from_proto(request.account.as_ref().unwrap());
@@ -104,13 +109,23 @@ pub fn handler(request: ProcessTransferRequest) -> Result<ProcessTransferRespons
             ex_units: Budget::default(),
         })
         .minting_script(&user_intent_mint.cbor)
+        // common
+        .tx_in_collateral(
+            &colleteral.input.tx_hash,
+            colleteral.input.output_index,
+            &colleteral.output.amount,
+            &colleteral.output.address,
+        )
+        .change_address(&request.address)
+        .required_signer_hash(&app_owner_vkey)
         .complete_sync(None)?;
 
     let tx_hex = tx_builder.tx_hex();
     let tx_hash = calculate_tx_hash(&tx_hex)?;
+    let signed_tx = sign_transaction::app_sign_tx(&tx_hex)?;
 
     Ok(ProcessTransferResponse {
-        tx_hex,
+        signed_tx,
         tx_hash,
         account_utxo_tx_index: 0,
         receiver_account_utxo_tx_index: 1,

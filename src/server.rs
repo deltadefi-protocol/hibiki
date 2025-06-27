@@ -3,7 +3,10 @@ use std::env;
 use whisky::calculate_tx_hash;
 
 use hibiki::{
-    handler::{internal_transfer, process_transfer, sign_transaction},
+    handler::{
+        create_hydra_account_utxo, internal_transfer, process_transfer,
+        serialize_transfer_intent_datum, sign_transaction,
+    },
     services::{
         self,
         hibiki_server::{Hibiki, HibikiServer},
@@ -50,6 +53,36 @@ impl Hibiki for HibikiService {
         println!("Got a request - process_transfer");
         let request_result = request.into_inner();
         let reply = match process_transfer::handler(request_result) {
+            Ok(value) => value,
+            Err(e) => {
+                return Err(Status::failed_precondition(e.to_string()));
+            }
+        };
+        Ok(Response::new(reply))
+    }
+
+    async fn create_hydra_account_utxo(
+        &self,
+        request: Request<services::CreateHydraAccountUtxoRequest>,
+    ) -> Result<Response<services::CreateHydraAccountUtxoResponse>, Status> {
+        println!("Got a request - create_hydra_account_utxo");
+        let request_result = request.into_inner();
+        let reply = match create_hydra_account_utxo::handler(request_result) {
+            Ok(value) => value,
+            Err(e) => {
+                return Err(Status::failed_precondition(e.to_string()));
+            }
+        };
+        Ok(Response::new(reply))
+    }
+
+    async fn serialize_transferal_intent_datum(
+        &self,
+        request: Request<services::SerializeTransferalIntentDatumRequest>,
+    ) -> Result<Response<services::SerializeDatumResponse>, Status> {
+        println!("Got a request - serialize_transferal_intent_datum");
+        let request_result = request.into_inner();
+        let reply = match serialize_transfer_intent_datum::handler(request_result) {
             Ok(value) => value,
             Err(e) => {
                 return Err(Status::failed_precondition(e.to_string()));

@@ -5,8 +5,7 @@ use crate::{
     utils::wallet::get_app_owner_wallet,
 };
 
-pub fn handler(request: SignTransactionRequest) -> Result<SignTransactionResponse, WError> {
-    let tx_hex = request.tx_hex;
+pub fn app_sign_tx(tx_hex: &str) -> Result<String, WError> {
     let app_owner_wallet = get_app_owner_wallet();
     let signed_tx = app_owner_wallet.sign_tx(&tx_hex).unwrap();
 
@@ -24,6 +23,12 @@ pub fn handler(request: SignTransactionRequest) -> Result<SignTransactionRespons
             "Transaction is not fully signed",
         ));
     }
+    Ok(signed_tx)
+}
+
+pub fn handler(request: SignTransactionRequest) -> Result<SignTransactionResponse, WError> {
+    let tx_hex = request.tx_hex;
+    let signed_tx = app_sign_tx(&tx_hex)?;
     let tx_hash = calculate_tx_hash(&signed_tx)?;
     let reply = SignTransactionResponse { signed_tx, tx_hash };
     Ok(reply)
