@@ -1068,8 +1068,6 @@ dependencies = [
  "tonic-build",
  "uplc 1.0.20-alpha",
  "whisky",
- "whisky-common",
- "whisky-macros",
 ]
 
 [[package]]

@@ -1,11 +1,11 @@
 use super::types::UserAccount;
 use crate::config::AppConfig;
+use whisky::ConstrEnum;
 use whisky::{
     data::{Bool, ByteString, Constr0, Int, PlutusDataToJson, Tuple},
     utils::blueprint::{MintingBlueprint, SpendingBlueprint},
     LanguageVersion,
 };
-use whisky_macros::ConstrEnum;
 
 #[derive(Debug, Clone, ConstrEnum)]
 pub enum HydraUserIntentRedeemer {

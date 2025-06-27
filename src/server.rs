@@ -23,6 +23,7 @@ impl Hibiki for HibikiService {
     ) -> Result<Response<services::InternalTransferResponse>, Status> {
         println!("Got a request - internal_transfer");
         let request_result = request.into_inner();
+
         let reply = match internal_transfer::handler(request_result) {
             Ok(value) => value,
             Err(e) => {

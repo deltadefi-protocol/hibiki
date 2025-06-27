@@ -20,10 +20,7 @@ async-trait = "0.1.79"
 maestro-rust-sdk = "1.1.3"
 reqwest = "0.12.3"
 # whisky = "1.0.6"
-whisky-macros = { path = "../../../sidan/whisky/packages/whisky-macros", default-features = false }
-whisky-common = { path = "../../../sidan/whisky/packages/whisky-common" }
 whisky = { path = "../../../sidan/whisky/packages/whisky" }
-# grpc_proto = { git = "https://github.com/deltadefi-protocol/deltadefi-schema.git", tag="v1.1.79" }
 hibiki-proto = { path = "../deltadefi-schema/proto/hibiki"}
 
 [build-dependencies]

@@ -1,6 +1,6 @@
 use serde_json::Value;
 use whisky::{
-    data::{ByteString, Constr0, Credential, PlutusDataToJson, ToJsonArray},
+    data::{ByteString, Constr0, Credential, PlutusDataToJson},
     impl_constr_wrapper_type,
 };
 use whisky::{ConstrEnum, ConstrWrapper};
