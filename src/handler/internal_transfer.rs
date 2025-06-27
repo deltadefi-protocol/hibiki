@@ -9,7 +9,7 @@ use crate::{
     },
     utils::{
         hydra::get_hydra_tx_builder,
-        proto::{from_proto_amount, from_proto_utxo},
+        proto::{from_proto_amount, from_proto_txin, from_proto_utxo},
     },
 };
 
@@ -18,13 +18,15 @@ pub fn handler(request: InternalTransferRequest) -> Result<IntentTxResponse, WEr
     let AppConfig { app_owner_vkey, .. } = AppConfig::new();
     let colleteral = from_proto_utxo(request.collateral_utxo.as_ref().unwrap());
     let empty_utxo = from_proto_utxo(request.empty_utxo.as_ref().unwrap());
+    let ref_input = from_proto_txin(request.dex_order_book_input.as_ref().unwrap());
+    let account = request.account.unwrap();
 
     let mut tx_builder = get_hydra_tx_builder();
     let user_intent_mint = hydra_user_intent_minting_blueprint();
     let user_intent_spend = hydra_user_intent_spending_blueprint();
 
-    let from_account = UserAccount::from_proto(request.account.unwrap());
-    let to_account = UserAccount::from_proto(request.receiver_account.unwrap());
+    let from_account = UserAccount::from_proto(&account);
+    let to_account = UserAccount::from_proto(&request.receiver_account.unwrap());
     let transfer_amount = Value::from_asset_vec(&from_proto_amount(&request.to_transfer));
 
     let redeemer_json = HydraUserIntentRedeemer::MintTransferIntent(
@@ -36,8 +38,8 @@ pub fn handler(request: InternalTransferRequest) -> Result<IntentTxResponse, WEr
     let datum_json =
         HydraUserIntentDatum::TransferIntent(from_account, to_account, transfer_amount);
 
-    // Use the blocking variant of complete() since we're now in a synchronous context
     tx_builder
+        .read_only_tx_in_reference(&ref_input.tx_hash, ref_input.output_index, None)
         .mint_plutus_script_v3()
         .mint(1, &user_intent_mint.hash, "")
         .mint_redeemer_value(&WRedeemer {
@@ -58,6 +60,7 @@ pub fn handler(request: InternalTransferRequest) -> Result<IntentTxResponse, WEr
         )
         .tx_out(&empty_utxo.output.address, &empty_utxo.output.amount)
         .required_signer_hash(&app_owner_vkey)
+        .required_signer_hash(&account.master_key)
         .tx_in_collateral(
             &colleteral.input.tx_hash,
             colleteral.input.output_index,

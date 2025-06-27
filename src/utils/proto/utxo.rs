@@ -13,10 +13,7 @@ pub fn from_proto_utxo(proto: &hibiki_proto::services::UTxO) -> UTxO {
         (!proto_output.script_hash.is_empty()).then(|| proto_output.script_hash.clone());
 
     UTxO {
-        input: UtxoInput {
-            output_index: proto_input.output_index,
-            tx_hash: proto_input.tx_hash.clone(),
-        },
+        input: from_proto_txin(proto_input),
         output: UtxoOutput {
             address: proto_output.address.clone(),
             amount: from_proto_amount(&proto_output.amount),
@@ -25,5 +22,12 @@ pub fn from_proto_utxo(proto: &hibiki_proto::services::UTxO) -> UTxO {
             script_ref,
             script_hash,
         },
+    }
+}
+
+pub fn from_proto_txin(proto: &hibiki_proto::services::UtxoInput) -> UtxoInput {
+    UtxoInput {
+        output_index: proto.output_index,
+        tx_hash: proto.tx_hash.clone(),
     }
 }

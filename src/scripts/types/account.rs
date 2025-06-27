@@ -21,7 +21,7 @@ impl_constr_wrapper_type!(Account, 0, [
 ]);
 
 impl UserAccount {
-    pub fn from_proto(account_info: hibiki_proto::services::AccountInfo) -> Self {
+    pub fn from_proto(account_info: &hibiki_proto::services::AccountInfo) -> Self {
         let account = Account::from(
             &account_info.account_id,
             (&account_info.master_key, account_info.is_script_master_key),

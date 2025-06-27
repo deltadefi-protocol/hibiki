@@ -1,7 +1,7 @@
 .PHONY: run build test coverage
 
-run-grpc-server:
-	@cargo run --bin tx-grpc-server 
+run:
+	@cargo run --bin hibiki
 
 generate-dev-ci-config:
 	@sh scripts/generate_ci_config.sh dev
