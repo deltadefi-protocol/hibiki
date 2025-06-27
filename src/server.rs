@@ -17,6 +17,16 @@ pub struct HibikiService {}
 
 #[tonic::async_trait]
 impl Hibiki for HibikiService {
+    async fn ping_hello(
+        &self,
+        _request: Request<services::HelloRequest>,
+    ) -> Result<Response<services::HelloResponse>, Status> {
+        let reply = services::HelloResponse {
+            message: "Hello from Hibiki!".to_string(),
+        };
+        Ok(Response::new(reply))
+    }
+
     async fn internal_transfer(
         &self,
         request: Request<services::InternalTransferRequest>,
