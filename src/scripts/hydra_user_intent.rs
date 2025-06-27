@@ -1,5 +1,6 @@
 use super::types::UserAccount;
 use crate::config::AppConfig;
+use whisky::data::Value;
 use whisky::ConstrEnum;
 use whisky::{
     data::{Bool, ByteString, Constr0, Int, PlutusDataToJson, Tuple},
@@ -25,17 +26,35 @@ pub enum HydraUserIntentRedeemer {
         >,
     ),
     HydraUserPlaceOrder,
-    MintCancelOrderIntent,
+    MintCancelOrderIntent(UserAccount, ByteString),
     HydraUserCancelOrder,
-    MintWithdrawalIntent,
+    MintWithdrawalIntent(UserAccount, Value),
     HydraUserWithdrawal,
-    MintTransferIntent,
+    MintTransferIntent(UserAccount, UserAccount, Value),
     HydraUserTransfer,
     BurnIntent,
 }
 
-pub fn hydra_user_intent_spending_blueprint(
-) -> SpendingBlueprint<ByteString, ByteString, ByteString> {
+#[derive(Debug, Clone, ConstrEnum)]
+pub enum HydraUserIntentDatum {
+    PlaceOrderIntent(
+        ByteString,
+        Tuple<(ByteString, ByteString)>,
+        Tuple<(ByteString, ByteString)>,
+        Bool,
+        Int,
+        Int,
+        Int,
+        Int,
+        UserAccount,
+    ),
+    CancelOrderIntent(UserAccount, ByteString),
+    WithdrawalIntent(UserAccount, Value),
+    TransferIntent(UserAccount, UserAccount, Value),
+}
+
+pub fn hydra_user_intent_spending_blueprint() -> SpendingBlueprint<(), Constr0, HydraUserIntentDatum>
+{
     let AppConfig { network_id, .. } = AppConfig::new();
     let mut blueprint =
         SpendingBlueprint::new(LanguageVersion::V3, network_id.parse().unwrap(), None);

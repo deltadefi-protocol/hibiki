@@ -20,7 +20,7 @@ impl Hibiki for HibikiService {
     async fn internal_transfer(
         &self,
         request: Request<services::InternalTransferRequest>,
-    ) -> Result<Response<services::InternalTransferResponse>, Status> {
+    ) -> Result<Response<services::IntentTxResponse>, Status> {
         println!("Got a request - internal_transfer");
         let request_result = request.into_inner();
 
