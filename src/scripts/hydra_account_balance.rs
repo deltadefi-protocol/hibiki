@@ -4,7 +4,7 @@ use crate::scripts::MintPolarity;
 use whisky::data::Value;
 use whisky::utils::blueprint::MintingBlueprint;
 use whisky::ConstrEnum;
-use whisky::{data::PlutusDataToJson, utils::blueprint::SpendingBlueprint, LanguageVersion};
+use whisky::{utils::blueprint::SpendingBlueprint, LanguageVersion};
 
 #[derive(Debug, Clone, ConstrEnum)]
 pub enum HydraAccountBalanceRedeemer {

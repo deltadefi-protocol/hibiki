@@ -3,7 +3,7 @@ use crate::config::AppConfig;
 use whisky::data::Value;
 use whisky::ConstrEnum;
 use whisky::{
-    data::{Bool, ByteString, Constr0, Int, PlutusDataToJson, Tuple},
+    data::{Bool, ByteString, Constr0, Int, Tuple},
     utils::blueprint::{MintingBlueprint, SpendingBlueprint},
     LanguageVersion,
 };
@@ -78,7 +78,6 @@ pub fn hydra_user_intent_minting_blueprint() -> MintingBlueprint<(), HydraUserIn
 
 #[cfg(test)]
 mod tests {
-
     use super::*;
     use dotenv::dotenv;
 

@@ -1,5 +1,5 @@
 use whisky::{
-    data::{PlutusDataToJson, Value},
+    data::{PlutusDataJson, Value},
     WData, WError,
 };
 
