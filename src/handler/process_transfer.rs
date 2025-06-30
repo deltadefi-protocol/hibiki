@@ -15,15 +15,15 @@ use crate::{
     },
     utils::{
         hydra::get_hydra_tx_builder,
-        proto::{from_proto_balance_utxo, from_proto_txin, from_proto_utxo},
+        proto::{from_proto_balance_utxo, from_proto_utxo},
     },
 };
 
-pub fn handler(request: ProcessTransferRequest) -> Result<ProcessTransferResponse, WError> {
+pub async fn handler(request: ProcessTransferRequest) -> Result<ProcessTransferResponse, WError> {
     let AppConfig { app_owner_vkey, .. } = AppConfig::new();
 
     let colleteral = from_proto_utxo(request.collateral_utxo.as_ref().unwrap());
-    let ref_input = from_proto_txin(request.dex_order_book_input.as_ref().unwrap());
+    let ref_input = from_proto_utxo(request.dex_order_book_utxo.as_ref().unwrap());
     let intent_utxo = from_proto_utxo(request.transferral_intent_utxo.as_ref().unwrap());
     let from_account = UserAccount::from_proto(request.account.as_ref().unwrap());
     let to_account = UserAccount::from_proto(request.receiver_account.as_ref().unwrap());
@@ -39,7 +39,8 @@ pub fn handler(request: ProcessTransferRequest) -> Result<ProcessTransferRespons
     let mut tx_builder = get_hydra_tx_builder();
     tx_builder
         // reference oracle utxo
-        .read_only_tx_in_reference(&ref_input.tx_hash, ref_input.output_index, None)
+        .read_only_tx_in_reference(&ref_input.input.tx_hash, ref_input.input.output_index, None)
+        .input_for_evaluation(&ref_input)
         // spending intent utxo
         .spending_plutus_script_v3()
         .tx_in(
@@ -118,7 +119,8 @@ pub fn handler(request: ProcessTransferRequest) -> Result<ProcessTransferRespons
         )
         .change_address(&request.address)
         .required_signer_hash(&app_owner_vkey)
-        .complete_sync(None)?;
+        .complete(None)
+        .await?;
 
     let tx_hex = tx_builder.tx_hex();
     let tx_hash = calculate_tx_hash(&tx_hex)?;

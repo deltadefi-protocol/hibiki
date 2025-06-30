@@ -22,8 +22,11 @@ impl_constr_wrapper_type!(Account, 0, [
 
 impl UserAccount {
     pub fn from_proto(account_info: &hibiki_proto::services::AccountInfo) -> Self {
+        // Remove dashes from UUID
+        let clean_account_id = account_info.account_id.replace("-", "");
+
         let account = Account::from(
-            &account_info.account_id,
+            &clean_account_id,
             (&account_info.master_key, account_info.is_script_master_key),
             (
                 &account_info.operation_key,

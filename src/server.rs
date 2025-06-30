@@ -34,10 +34,10 @@ impl Hibiki for HibikiService {
         &self,
         request: Request<services::InternalTransferRequest>,
     ) -> Result<Response<services::IntentTxResponse>, Status> {
-        println!("Got a request - internal_transfer");
         let request_result = request.into_inner();
+        println!("Got a request - internal_transfer {:?}", request_result);
 
-        let reply = match internal_transfer::handler(request_result) {
+        let reply = match internal_transfer::handler(request_result).await {
             Ok(value) => value,
             Err(e) => {
                 return Err(Status::failed_precondition(e.to_string()));
@@ -50,9 +50,9 @@ impl Hibiki for HibikiService {
         &self,
         request: Request<services::ProcessTransferRequest>,
     ) -> Result<Response<services::ProcessTransferResponse>, Status> {
-        println!("Got a request - process_transfer");
         let request_result = request.into_inner();
-        let reply = match process_transfer::handler(request_result) {
+        println!("Got a request - process_transfer {:?}", request_result);
+        let reply = match process_transfer::handler(request_result).await {
             Ok(value) => value,
             Err(e) => {
                 return Err(Status::failed_precondition(e.to_string()));
@@ -65,9 +65,12 @@ impl Hibiki for HibikiService {
         &self,
         request: Request<services::CreateHydraAccountUtxoRequest>,
     ) -> Result<Response<services::CreateHydraAccountUtxoResponse>, Status> {
-        println!("Got a request - create_hydra_account_utxo");
         let request_result = request.into_inner();
-        let reply = match create_hydra_account_utxo::handler(request_result) {
+        println!(
+            "Got a request - create_hydra_account_utxo {:?}",
+            request_result
+        );
+        let reply = match create_hydra_account_utxo::handler(request_result).await {
             Ok(value) => value,
             Err(e) => {
                 return Err(Status::failed_precondition(e.to_string()));
