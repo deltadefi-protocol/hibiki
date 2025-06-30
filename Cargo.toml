@@ -19,9 +19,10 @@ dotenv = "0.15.0"
 async-trait = "0.1.79"
 maestro-rust-sdk = "1.1.3"
 reqwest = "0.12.3"
-# whisky = "1.0.6"
-whisky = { path = "../../../sidan/whisky/packages/whisky" }
-hibiki-proto = { path = "../deltadefi-schema/proto/hibiki"}
+whisky = "1.0.9"
+# whisky = { path = "../../../sidan/whisky/packages/whisky" }
+hibiki-proto = { git = "https://github.com/deltadefi-protocol/deltadefi-schema.git", tag = "v1.1.84", dir = "proto/hibiki" }
+# hibiki-proto = { path = "../deltadefi-schema/proto/hibiki"}
 
 [build-dependencies]
 tonic-build = "0.10"
