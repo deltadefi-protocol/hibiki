@@ -116,7 +116,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           build-args: |
-            PAT_TOKEN=${{ secrets.PAT_TOKEN }}
+            GITHUB_TOKEN=${{ secrets.PAT_TOKEN }}
 
       - name: Display build time
         run: |
