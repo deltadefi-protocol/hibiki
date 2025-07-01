@@ -16,16 +16,40 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.PAT_TOKEN }}
+          submodules: recursive
 
       - name: Install Protobuf Compiler
         run: |
           sudo apt-get update
           sudo apt-get install -y protobuf-compiler
 
-      - name: Configure Git for private repositories
+      - name: Configure Git credentials for private repositories
         run: |
-          git config --global url."https://${{ secrets.PAT_TOKEN }}@github.com/".insteadOf "https://github.com/"
-          echo "Git configured to use PAT for all GitHub repositories"
+          # Configure Git to use HTTPS with credentials for all GitHub URLs
+          git config --global credential.helper store
+          echo "https://${{ secrets.PAT_TOKEN }}:x-oauth-basic@github.com" > ~/.git-credentials
+
+          # Extra config specifically for deltadefi-protocol repos
+          git config --global url."https://${{ secrets.PAT_TOKEN }}:x-oauth-basic@github.com/deltadefi-protocol/".insteadOf "https://github.com/deltadefi-protocol/"
+
+          # General GitHub config
+          git config --global url."https://${{ secrets.PAT_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
+
+          # Debug: Show git remote URLs (will not show tokens in logs)
+          echo "Git configured for private repositories"
+
+          # Debug: Try accessing the repo manually to verify access
+          echo "Testing access to deltadefi-schema repository..."
+          git ls-remote https://github.com/deltadefi-protocol/deltadefi-schema.git | head -n 1 || echo "Manual access failed"
+
+      - name: Configure Cargo for git CLI usage
+        run: |
+          mkdir -p ~/.cargo
+          echo '[net]' > ~/.cargo/config.toml
+          echo 'git-fetch-with-cli = true' >> ~/.cargo/config.toml
+          cat ~/.cargo/config.toml
 
       - name: Setup Rust
         uses: actions-rs/toolchain@v1
@@ -47,6 +71,8 @@ jobs:
 
       - name: Run Tests
         run: cargo test --verbose
+        env:
+          CARGO_NET_GIT_FETCH_WITH_CLI: true
 
   build-docker:
     name: Build Docker Image
@@ -54,11 +80,23 @@ jobs:
     needs: test
     steps:
       - uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.PAT_TOKEN }}
+          submodules: recursive
 
-      - name: Configure Git for private repositories
+      - name: Configure Git credentials for private repositories
         run: |
-          git config --global url."https://${{ secrets.PAT_TOKEN }}@github.com/".insteadOf "https://github.com/"
-          echo "Git configured to use PAT for all GitHub repositories"
+          # Configure Git to use HTTPS with credentials for all GitHub URLs
+          git config --global credential.helper store
+          echo "https://${{ secrets.PAT_TOKEN }}:x-oauth-basic@github.com" > ~/.git-credentials
+
+          # Extra config specifically for deltadefi-protocol repos
+          git config --global url."https://${{ secrets.PAT_TOKEN }}:x-oauth-basic@github.com/deltadefi-protocol/".insteadOf "https://github.com/deltadefi-protocol/"
+
+          # General GitHub config  
+          git config --global url."https://${{ secrets.PAT_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
+
+          echo "Git configured for private repositories"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
@@ -74,6 +112,8 @@ jobs:
           cache-to: type=gha,mode=max
           build-args: |
             PAT_TOKEN=${{ secrets.PAT_TOKEN }}
+          secret: |
+            GIT_AUTH_TOKEN=${{ secrets.PAT_TOKEN }}
 
       - name: Display build time
         run: |
