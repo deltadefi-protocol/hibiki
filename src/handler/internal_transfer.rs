@@ -78,8 +78,8 @@ pub async fn handler(request: InternalTransferRequest) -> Result<IntentTxRespons
     let tx_hash = calculate_tx_hash(&tx_hex)?;
 
     Ok(IntentTxResponse {
-        tx_hex: tx_hex,
-        tx_hash: tx_hash,
+        tx_hex,
+        tx_hash,
         tx_index: 0,
         new_empty_utxo_tx_index: 1,
     })

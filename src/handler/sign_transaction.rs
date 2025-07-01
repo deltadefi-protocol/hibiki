@@ -7,12 +7,12 @@ use crate::{
 
 pub fn app_sign_tx(tx_hex: &str) -> Result<String, WError> {
     let app_owner_wallet = get_app_owner_wallet();
-    let signed_tx = app_owner_wallet.sign_tx(&tx_hex).unwrap();
+    let signed_tx = app_owner_wallet.sign_tx(tx_hex).unwrap();
 
     let mut tx_parser = CSLParser::new();
     let is_transaction_fully_signed =
         tx_parser
-            .check_all_required_signers(&tx_hex)
+            .check_all_required_signers(tx_hex)
             .map_err(WError::from_err(
                 "SignTransaction - check_all_required_signers",
             ))?;
