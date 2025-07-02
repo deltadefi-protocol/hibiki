@@ -103,7 +103,7 @@ jobs:
           template: basic_success_1
 
 workflows:
-  versoin: 2
+  version: 2
   build_and_push_workflow:
     when: pipeline.event.name == "push"
     jobs:
