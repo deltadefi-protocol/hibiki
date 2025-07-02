@@ -69,7 +69,7 @@ jobs:
             DOCKER_IMAGE=$(cat /tmp/workspace/docker_image.txt)
 
             #Create the payload for the webhook
-            PAYLOAD=$(cat <<EOF
+            PAYLOAD=$(cat <<'WEBHOOK_PAYLOAD'
             {
             "repository": "$CIRCLE_PROJECT_REPONAME",
             "branch": "$CIRCLE_BRANCH",
@@ -77,8 +77,10 @@ jobs:
             "docker_image": "$DOCKER_IMAGE",
             "deploy": true,
             }
-            EOF
+            WEBHOOK_PAYLOAD
             )
+            # Substitute variables in the payload
+            PAYLOAD=$(echo "$PAYLOAD" | envsubst)
             echo "export PAYLOAD='$PAYLOAD'" >> $BASH_ENV
 
       - run:
