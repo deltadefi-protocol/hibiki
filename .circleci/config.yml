@@ -81,7 +81,7 @@ jobs:
             )
             echo "export PAYLOAD='$PAYLOAD'" >> $BASH_ENV
 
-      - run: 
+      - run:
           name: Send webhook
           command: |
             HTTP_STATUS=$(
@@ -100,7 +100,7 @@ jobs:
           template: basic_fail_1
       - slack/notify:
           event: pass
-          template: basic_success_1          
+          template: basic_success_1
 
 workflows:
   versoin: 2
@@ -108,7 +108,7 @@ workflows:
     when: pipeline.event.name == "push"
     jobs:
       - build_and_push:
-          <<: [**credentials_context, *dev_stg_prod_only]
+          <<: [*credentials_context, *dev_stg_prod_only]
       - send_webhook:
           <<: [*credentials_context, *dev_stg_prod_only]
           requires:
