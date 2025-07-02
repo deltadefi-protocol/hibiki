@@ -13,7 +13,7 @@ aliases:
       - slack_creds
       - github_creds
       - gcp_creds
-      - circle_creds
+      - circleci_creds
   - &deploy_environment
     working_directory: ~/repo
     docker:
