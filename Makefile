@@ -3,6 +3,9 @@
 run:
 	@cargo run --bin hibiki
 
+build:
+	@cargo build --release
+
 generate-dev-ci-config:
 	@sh scripts/generate_ci_config.sh dev
 

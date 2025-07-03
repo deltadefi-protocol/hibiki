@@ -1,0 +1,92 @@
+version: 2.1
+aliases:
+  - &dev_stg_prod_only
+    filters:
+      branches:
+        only:
+          - develop
+          - staging
+          - main
+  - &credentials_context
+    context:
+      - slack_creds
+      - github_creds
+      - gcp_creds
+      - circleci_creds
+  - &deploy_environment
+    working_directory: ~/repo
+    docker:
+      - image: cimg/gcp:2024.08
+
+orbs:
+  docker: circleci/docker@2.1.4
+  slack: circleci/slack@4.12.5
+
+jobs:
+  build_and_push:
+    <<: [*deploy_environment]
+    steps:
+      - checkout
+      - run:
+          name: decode GCP service key
+          command: |
+            echo 'export PATH=~$PATH:~/.local/bin' >> $BASH_ENV
+            echo ${GCP_SERVICE_KEY} | base64 --decode --ignore-garbage > ${HOME}/gcloud-service-key.json
+      - run:
+          name: Setup gcloud
+          command: |
+            gcloud auth activate-service-account --key-file=${HOME}/gcloud-service-key.json
+            gcloud config set project $GCLOUD_PROJECT_ID
+            gcloud auth configure-docker asia-northeast1-docker.pkg.dev --quiet
+      - setup_remote_docker:
+          docker_layer_caching: true
+      - run:
+          name: Build and Push Docker image
+          command: |
+            DOCKER_IMAGE="asia-northeast1-docker.pkg.dev/$GCLOUD_PROJECT_ID/backend/$CIRCLE_PROJECT_REPONAME:$CIRCLE_SHA1"
+            docker build -t $DOCKER_IMAGE --build-arg GITHUB_TOKEN=$GITHUB_TOKEN .
+            docker push $DOCKER_IMAGE
+      - slack/notify:
+          event: fail
+          template: basic_fail_1
+  send_webhook:
+    <<: [*deploy_environment]
+    steps:
+      - run:
+          name: Prepare webhook payload
+          command: |
+            #Create the payload for the webhook
+            PAYLOAD="{\"repository\":\"$CIRCLE_PROJECT_REPONAME\",\"branch\":\"$CIRCLE_BRANCH\",\"commit\":\"$CIRCLE_SHA1\"}"
+            echo "export PAYLOAD='$PAYLOAD'" >> $BASH_ENV
+      - run:
+          name: Send webhook
+          command: |
+            HTTP_STATUS=$(
+            curl -X POST -H "Content-Type: application/json" \
+            -d "$PAYLOAD" \
+            ${WEBHOOK_URL}
+            )
+            if [ "$HTTP_STATUS" -ne 200 ]; then
+              echo "Webhook failed with status $HTTP_STATUS"
+              exit 1
+            else
+              echo "Webhook sent successfully"
+            fi
+      - slack/notify:
+          event: fail
+          template: basic_fail_1
+      - slack/notify:
+          event: pass
+          template: basic_success_1
+
+workflows:
+  version: 2
+  build_and_push_workflow:
+    when: pipeline.event.name == "push"
+    jobs:
+      - build_and_push:
+          <<: [*credentials_context, *dev_stg_prod_only]
+      - send_webhook:
+          <<: [*credentials_context, *dev_stg_prod_only]
+          requires:
+            - build_and_push
