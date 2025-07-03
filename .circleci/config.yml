@@ -71,7 +71,7 @@ jobs:
             DOCKER_IMAGE=$(cat /tmp/workspace/docker_image.txt)
 
             #Create the payload for the webhook
-            PAYLOAD="{\"repository\":\"$CIRCLE_PROJECT_REPONAME\",\"branch\":\"$CIRCLE_BRANCH\",\"commit\":\"$CIRCLE_SHA1\",\"docker_image\":\"$DOCKER_IMAGE\",\"deploy\":true}"
+            PAYLOAD="{\"repository\":\"$CIRCLE_PROJECT_REPONAME\",\"branch\":\"$CIRCLE_BRANCH\",\"commit\":\"$CIRCLE_SHA1\"}"
             echo "export PAYLOAD='$PAYLOAD'" >> $BASH_ENV
 
       - run:
