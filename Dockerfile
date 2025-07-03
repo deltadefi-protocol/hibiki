@@ -68,7 +68,7 @@ RUN chmod 755 /usr/local/bin/hibiki
 USER appuser
 
 # Expose the port
-EXPOSE 50061
+EXPOSE 50062
 
 # Define the entry point
 CMD ["hibiki"]
