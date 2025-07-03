@@ -19,5 +19,7 @@ COPY ./ ./
 
 RUN cargo build --release
 
+EXPOSE 50062
+
 CMD ["./target/release/hibiki"]
 

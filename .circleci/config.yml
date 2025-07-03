@@ -7,7 +7,6 @@ aliases:
           - develop
           - staging
           - main
-          - feat/setup-cicd
   - &credentials_context
     context:
       - slack_creds
