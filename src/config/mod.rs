@@ -5,6 +5,7 @@ pub struct AppConfig {
     pub network_id: String,
     pub app_owner_mnemonic: String,
     pub app_owner_vkey: String,
+    pub fee_collector_mnemonic: String,
 }
 
 impl AppConfig {
@@ -15,6 +16,9 @@ impl AppConfig {
                 &var("APP_OWNER_SEED_PHRASE").unwrap(),
             ),
             app_owner_vkey: var("OWNER_VKEY").unwrap_or("".to_string()),
+            fee_collector_mnemonic: convert_mnemonic_comma_to_space(
+                &var("FEE_COLLECTOR_SEED_PHRASE").unwrap(),
+            ),
         }
     }
 }
