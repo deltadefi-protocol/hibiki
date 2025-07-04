@@ -4,16 +4,15 @@ use whisky::calculate_tx_hash;
 
 use hibiki::{
     handler::{
-        create_hydra_account_utxo, internal_transfer, process_transfer,
-        serialize_transfer_intent_datum, sign_transaction,
+        create_hydra_account_utxo,
+        internal_transfer,
+        process_transfer,
+        serialize_transfer_intent_datum,
+        sign_transaction,
     },
-    services::{
-        self,
-        hibiki_server::{Hibiki, HibikiServer},
-        TxHashResponse,
-    },
+    services::{ self, hibiki_server::{ Hibiki, HibikiServer }, TxHashResponse },
 };
-use tonic::{transport::Server, Request, Response, Status};
+use tonic::{ transport::Server, Request, Response, Status };
 
 #[derive(Debug, Default)]
 pub struct HibikiService {}
@@ -22,7 +21,7 @@ pub struct HibikiService {}
 impl Hibiki for HibikiService {
     async fn ping_hello(
         &self,
-        _request: Request<services::HelloRequest>,
+        _request: Request<services::HelloRequest>
     ) -> Result<Response<services::HelloResponse>, Status> {
         let reply = services::HelloResponse {
             message: "Hello from Hibiki!".to_string(),
@@ -32,7 +31,7 @@ impl Hibiki for HibikiService {
 
     async fn internal_transfer(
         &self,
-        request: Request<services::InternalTransferRequest>,
+        request: Request<services::InternalTransferRequest>
     ) -> Result<Response<services::IntentTxResponse>, Status> {
         let request_result = request.into_inner();
         println!("Got a request - internal_transfer {:?}", request_result);
@@ -48,7 +47,7 @@ impl Hibiki for HibikiService {
 
     async fn process_transfer(
         &self,
-        request: Request<services::ProcessTransferRequest>,
+        request: Request<services::ProcessTransferRequest>
     ) -> Result<Response<services::ProcessTransferResponse>, Status> {
         let request_result = request.into_inner();
         println!("Got a request - process_transfer {:?}", request_result);
@@ -63,13 +62,10 @@ impl Hibiki for HibikiService {
 
     async fn create_hydra_account_utxo(
         &self,
-        request: Request<services::CreateHydraAccountUtxoRequest>,
+        request: Request<services::CreateHydraAccountUtxoRequest>
     ) -> Result<Response<services::CreateHydraAccountUtxoResponse>, Status> {
         let request_result = request.into_inner();
-        println!(
-            "Got a request - create_hydra_account_utxo {:?}",
-            request_result
-        );
+        println!("Got a request - create_hydra_account_utxo {:?}", request_result);
         let reply = match create_hydra_account_utxo::handler(request_result).await {
             Ok(value) => value,
             Err(e) => {
@@ -81,7 +77,7 @@ impl Hibiki for HibikiService {
 
     async fn serialize_transferal_intent_datum(
         &self,
-        request: Request<services::SerializeTransferalIntentDatumRequest>,
+        request: Request<services::SerializeTransferalIntentDatumRequest>
     ) -> Result<Response<services::SerializeDatumResponse>, Status> {
         println!("Got a request - serialize_transferal_intent_datum");
         let request_result = request.into_inner();
@@ -96,7 +92,7 @@ impl Hibiki for HibikiService {
 
     async fn sign_transaction(
         &self,
-        request: Request<services::SignTransactionRequest>,
+        request: Request<services::SignTransactionRequest>
     ) -> Result<Response<services::SignTransactionResponse>, Status> {
         println!("Got a request - sign_transaction");
         let request_result = request.into_inner();
@@ -111,7 +107,7 @@ impl Hibiki for HibikiService {
 
     async fn calculate_tx_hash(
         &self,
-        request: Request<services::CalculateTxHashRequest>,
+        request: Request<services::CalculateTxHashRequest>
     ) -> Result<Response<services::TxHashResponse>, Status> {
         println!("Got a request - calculate_tx_hash");
         let request_result = request.into_inner();
@@ -129,13 +125,10 @@ impl Hibiki for HibikiService {
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     dotenv().ok();
     let port = env::var("PORT").unwrap_or_else(|_| "50051".to_string());
-    let addr = format!("127.0.0.1:{}", port).parse()?;
+    let addr = format!("0.0.0.0:{}", port).parse()?;
     let transactions = HibikiService::default();
 
     println!("Server listening on port {}...", port);
-    Server::builder()
-        .add_service(HibikiServer::new(transactions))
-        .serve(addr)
-        .await?;
+    Server::builder().add_service(HibikiServer::new(transactions)).serve(addr).await?;
     Ok(())
 }
