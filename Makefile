@@ -1,5 +1,8 @@
 .PHONY: run build test coverage
 
+test:
+	@cargo test
+
 run:
 	@cargo run --bin hibiki
 
