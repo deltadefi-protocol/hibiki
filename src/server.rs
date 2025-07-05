@@ -5,7 +5,7 @@ use whisky::calculate_tx_hash;
 use hibiki::{
     handler::{
         create_hydra_account_utxo, internal_transfer, process_transfer,
-        serialize_transfer_intent_datum, sign_transaction,
+        serialize_transfer_intent_datum, sign_transaction, sign_transaction_with_fee_collector,
     },
     services::{
         self,
@@ -115,7 +115,7 @@ impl Hibiki for HibikiService {
     ) -> Result<Response<services::SignTransactionResponse>, Status> {
         println!("Got a request - sign_transaction_with_fee_collector");
         let request_result = request.into_inner();
-        let reply = match sign_transaction::handler(request_result) {
+        let reply = match sign_transaction_with_fee_collector::handler(request_result) {
             Ok(value) => value,
             Err(e) => {
                 return Err(Status::failed_precondition(e.to_string()));
