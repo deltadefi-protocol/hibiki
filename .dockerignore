@@ -1,0 +1,54 @@
+# Target directory containing build artifacts
+/target/
+
+# Git directory
+.git/
+.gitignore
+.github/
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Documentation
+/docs/
+*.md
+!README.md
+
+# Development configurations
+.env
+.env.*
+*.local
+
+# Test files
+/tests/
+/benches/
+
+# Backup files
+*~
+*.bak
+
+# Debug artifacts
+*.pdb
+*.dSYM/
+*.su
+*.idb
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Rust-specific files that don't need to be in the Docker context
+rustfmt.toml
+clippy.toml
+
+# Debugging configurations
+.gdb_history

@@ -3,7 +3,10 @@ use std::env;
 use whisky::calculate_tx_hash;
 
 use hibiki::{
-    handler::{internal_transfer, process_transfer, sign_transaction},
+    handler::{
+        create_hydra_account_utxo, internal_transfer, process_transfer,
+        serialize_transfer_intent_datum, sign_transaction, sign_transaction_with_fee_collector,
+    },
     services::{
         self,
         hibiki_server::{Hibiki, HibikiServer},
@@ -17,13 +20,24 @@ pub struct HibikiService {}
 
 #[tonic::async_trait]
 impl Hibiki for HibikiService {
+    async fn ping_hello(
+        &self,
+        _request: Request<services::HelloRequest>,
+    ) -> Result<Response<services::HelloResponse>, Status> {
+        let reply = services::HelloResponse {
+            message: "Hello from Hibiki!".to_string(),
+        };
+        Ok(Response::new(reply))
+    }
+
     async fn internal_transfer(
         &self,
         request: Request<services::InternalTransferRequest>,
-    ) -> Result<Response<services::InternalTransferResponse>, Status> {
-        println!("Got a request - internal_transfer");
+    ) -> Result<Response<services::IntentTxResponse>, Status> {
         let request_result = request.into_inner();
-        let reply = match internal_transfer::handler(request_result) {
+        println!("Got a request - internal_transfer {:?}", request_result);
+
+        let reply = match internal_transfer::handler(request_result).await {
             Ok(value) => value,
             Err(e) => {
                 return Err(Status::failed_precondition(e.to_string()));
@@ -36,9 +50,42 @@ impl Hibiki for HibikiService {
         &self,
         request: Request<services::ProcessTransferRequest>,
     ) -> Result<Response<services::ProcessTransferResponse>, Status> {
-        println!("Got a request - process_transfer");
         let request_result = request.into_inner();
-        let reply = match process_transfer::handler(request_result) {
+        println!("Got a request - process_transfer {:?}", request_result);
+        let reply = match process_transfer::handler(request_result).await {
+            Ok(value) => value,
+            Err(e) => {
+                return Err(Status::failed_precondition(e.to_string()));
+            }
+        };
+        Ok(Response::new(reply))
+    }
+
+    async fn create_hydra_account_utxo(
+        &self,
+        request: Request<services::CreateHydraAccountUtxoRequest>,
+    ) -> Result<Response<services::CreateHydraAccountUtxoResponse>, Status> {
+        let request_result = request.into_inner();
+        println!(
+            "Got a request - create_hydra_account_utxo {:?}",
+            request_result
+        );
+        let reply = match create_hydra_account_utxo::handler(request_result).await {
+            Ok(value) => value,
+            Err(e) => {
+                return Err(Status::failed_precondition(e.to_string()));
+            }
+        };
+        Ok(Response::new(reply))
+    }
+
+    async fn serialize_transferal_intent_datum(
+        &self,
+        request: Request<services::SerializeTransferalIntentDatumRequest>,
+    ) -> Result<Response<services::SerializeDatumResponse>, Status> {
+        println!("Got a request - serialize_transferal_intent_datum");
+        let request_result = request.into_inner();
+        let reply = match serialize_transfer_intent_datum::handler(request_result) {
             Ok(value) => value,
             Err(e) => {
                 return Err(Status::failed_precondition(e.to_string()));
@@ -54,6 +101,21 @@ impl Hibiki for HibikiService {
         println!("Got a request - sign_transaction");
         let request_result = request.into_inner();
         let reply = match sign_transaction::handler(request_result) {
+            Ok(value) => value,
+            Err(e) => {
+                return Err(Status::failed_precondition(e.to_string()));
+            }
+        };
+        Ok(Response::new(reply))
+    }
+
+    async fn sign_transaction_with_fee_collector(
+        &self,
+        request: Request<services::SignTransactionRequest>,
+    ) -> Result<Response<services::SignTransactionResponse>, Status> {
+        println!("Got a request - sign_transaction_with_fee_collector");
+        let request_result = request.into_inner();
+        let reply = match sign_transaction_with_fee_collector::handler(request_result) {
             Ok(value) => value,
             Err(e) => {
                 return Err(Status::failed_precondition(e.to_string()));
@@ -82,7 +144,7 @@ impl Hibiki for HibikiService {
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     dotenv().ok();
     let port = env::var("PORT").unwrap_or_else(|_| "50051".to_string());
-    let addr = format!("127.0.0.1:{}", port).parse()?;
+    let addr = format!("0.0.0.0:{}", port).parse()?;
     let transactions = HibikiService::default();
 
     println!("Server listening on port {}...", port);

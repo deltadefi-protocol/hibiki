@@ -1,58 +1,51 @@
-use hibiki_proto::services::{IntentTxResponse, InternalTransferRequest};
+use hibiki_proto::services::{CreateHydraAccountUtxoRequest, CreateHydraAccountUtxoResponse};
 use whisky::{calculate_tx_hash, data::Value, Asset, Budget, WError, WRedeemer};
 
 use crate::{
     config::AppConfig,
+    handler::sign_transaction,
     scripts::{
-        hydra_user_intent_minting_blueprint, hydra_user_intent_spending_blueprint,
-        HydraUserIntentDatum, HydraUserIntentRedeemer, UserAccount,
+        hydra_account_balance_minting_blueprint, hydra_account_balance_spending_blueprint,
+        HydraAccountBalanceDatum, MintPolarity, UserAccount,
     },
-    utils::{
-        hydra::get_hydra_tx_builder,
-        proto::{from_proto_amount, from_proto_utxo},
-    },
+    utils::{hydra::get_hydra_tx_builder, proto::from_proto_utxo},
 };
 
-// Changed from async to synchronous function to avoid Send issues with Rc<T>
-pub async fn handler(request: InternalTransferRequest) -> Result<IntentTxResponse, WError> {
+pub async fn handler(
+    request: CreateHydraAccountUtxoRequest,
+) -> Result<CreateHydraAccountUtxoResponse, WError> {
     let AppConfig { app_owner_vkey, .. } = AppConfig::new();
+
     let colleteral = from_proto_utxo(request.collateral_utxo.as_ref().unwrap());
-    let empty_utxo = from_proto_utxo(request.empty_utxo.as_ref().unwrap());
     let ref_input = from_proto_utxo(request.dex_order_book_utxo.as_ref().unwrap());
-    let account = request.account.unwrap();
+    let empty_utxo = from_proto_utxo(request.empty_utxo.as_ref().unwrap());
+    let account = UserAccount::from_proto(request.account.as_ref().unwrap());
+
+    let account_balance_spend = hydra_account_balance_spending_blueprint();
+    let account_balance_mint = hydra_account_balance_minting_blueprint();
 
     let mut tx_builder = get_hydra_tx_builder();
-    let user_intent_mint = hydra_user_intent_minting_blueprint();
-    let user_intent_spend = hydra_user_intent_spending_blueprint();
-
-    let from_account = UserAccount::from_proto(&account);
-    let to_account = UserAccount::from_proto(&request.receiver_account.unwrap());
-    let transfer_amount = Value::from_asset_vec(&from_proto_amount(&request.to_transfer));
-
-    let redeemer_json = HydraUserIntentRedeemer::MintTransferIntent(
-        from_account.clone(),
-        to_account.clone(),
-        transfer_amount.clone(),
-    );
-
-    let datum_json =
-        HydraUserIntentDatum::TransferIntent(from_account, to_account, transfer_amount);
-
     tx_builder
+        // reference oracle utxo
         .read_only_tx_in_reference(&ref_input.input.tx_hash, ref_input.input.output_index, None)
         .input_for_evaluation(&ref_input)
+        // mint the hydra account utxo token
         .mint_plutus_script_v3()
-        .mint(1, &user_intent_mint.hash, "")
+        .mint(1, &account_balance_mint.hash, "")
         .mint_redeemer_value(&WRedeemer {
-            data: user_intent_mint.redeemer(redeemer_json),
+            data: account_balance_mint.redeemer(MintPolarity::RMint),
             ex_units: Budget::default(),
         })
-        .minting_script(&user_intent_mint.cbor)
+        .minting_script(&account_balance_mint.cbor)
+        // lock it at validator
         .tx_out(
-            &user_intent_spend.address,
-            &[Asset::new_from_str(&user_intent_mint.hash, "1")],
+            &account_balance_spend.address,
+            &[Asset::new_from_str(&account_balance_mint.hash, "1")],
         )
-        .tx_out_inline_datum_value(&user_intent_spend.datum(datum_json))
+        .tx_out_inline_datum_value(
+            &account_balance_spend.datum(HydraAccountBalanceDatum::Datum(account, Value::new())),
+        )
+        // empty utxo
         .tx_in(
             &empty_utxo.input.tx_hash,
             empty_utxo.input.output_index,
@@ -61,8 +54,7 @@ pub async fn handler(request: InternalTransferRequest) -> Result<IntentTxRespons
         )
         .input_for_evaluation(&empty_utxo)
         .tx_out(&empty_utxo.output.address, &empty_utxo.output.amount)
-        .required_signer_hash(&app_owner_vkey)
-        .required_signer_hash(&account.master_key)
+        // common
         .tx_in_collateral(
             &colleteral.input.tx_hash,
             colleteral.input.output_index,
@@ -71,42 +63,33 @@ pub async fn handler(request: InternalTransferRequest) -> Result<IntentTxRespons
         )
         .input_for_evaluation(&colleteral)
         .change_address(&request.address)
+        .required_signer_hash(&app_owner_vkey)
         .complete(None)
         .await?;
 
     let tx_hex = tx_builder.tx_hex();
     let tx_hash = calculate_tx_hash(&tx_hex)?;
+    let signed_tx = sign_transaction::app_sign_tx(&tx_hex)?;
 
-    Ok(IntentTxResponse {
-        tx_hex,
+    Ok(CreateHydraAccountUtxoResponse {
+        signed_tx,
         tx_hash,
-        tx_index: 0,
+        account_utxo_tx_index: 0,
         new_empty_utxo_tx_index: 1,
     })
 }
 
 #[cfg(test)]
 mod tests {
-    use hibiki_proto::services::{AccountInfo, Asset, UTxO, UtxoInput, UtxoOutput};
-
     use super::*;
     use dotenv::dotenv;
+    use hibiki_proto::services::{AccountInfo, Asset, UTxO, UtxoInput, UtxoOutput};
 
     #[tokio::test]
-    async fn test_internal_transfer() {
+    async fn test_create_hydra_account_utxo() {
         dotenv().ok();
-        
-        // Convert all string literals to String and use correct field names
-        let request = InternalTransferRequest { 
+        let request = CreateHydraAccountUtxoRequest { 
             account: Some(AccountInfo { 
-                account_id: "7c2f29ff-8829-4a83-9318-0c32ae6bbb4f".to_string(), 
-                account_type: "spot_account".to_string(), 
-                master_key: "04845038ee499ee8bc0afe56f688f27b2dd76f230d3698a9afcc1b66".to_string(), 
-                is_script_master_key: false, 
-                operation_key: "ff850ae069dfe1aef8db8b8fb40fd9b6d2c7f4d61b5bb7e5ad3fd3b6".to_string(), 
-                is_script_operation_key: false 
-            }), 
-            receiver_account: Some(AccountInfo { 
                 account_id: "4a3ec060-5156-4321-a180-5924270608cb".to_string(), 
                 account_type: "spot_account".to_string(), 
                 master_key: "fdeb4bf0e8c077114a4553f1e05395e9fb7114db177f02f7b65c8de4".to_string(), 
@@ -114,31 +97,9 @@ mod tests {
                 operation_key: "0b01677be7cda9eeb4f5a15c5c14ac9b715d6018a09cb70258093e95".to_string(), 
                 is_script_operation_key: false 
             }), 
-            to_transfer: vec![Asset { 
-                unit: "lovelace".to_string(), 
-                quantity: "1000000".to_string() 
-            }], 
-            address: "addr_test1qqzgg5pcaeyea69uptl9da5g7fajm4m0yvxndx9f4lxpkehqgezy0s04rtdwlc0tlvxafpdrfxnsg7ww68ge3j7l0lnszsw2wt".to_string(), 
-            collateral_utxo: Some(UTxO { 
-                input: Some(UtxoInput { 
-                    output_index: 1000, 
-                    tx_hash: "89c54b3a70ef3608355bd822b3df44c672150654fd211c8e02e37e1453e04f7d".to_string() 
-                }), 
-                output: Some(UtxoOutput { 
-                    address: "addr1v8a9zdhfa8kteyr3mfe7adkf5nlh8jl5xcg9e7pcp5w9yhq03jspj".to_string(), 
-                    amount: vec![Asset { 
-                        unit: "lovelace".to_string(), 
-                        quantity: "10000000".to_string() 
-                    }], 
-                    data_hash: "".to_string(), 
-                    plutus_data: "".to_string(), 
-                    script_ref: "".to_string(), 
-                    script_hash: "".to_string() 
-                }) 
-            }), 
             empty_utxo: Some(UTxO { 
                 input: Some(UtxoInput { 
-                    output_index: 773, 
+                    output_index: 862, 
                     tx_hash: "89c54b3a70ef3608355bd822b3df44c672150654fd211c8e02e37e1453e04f7d".to_string() 
                 }), 
                 output: Some(UtxoOutput { 
@@ -153,19 +114,36 @@ mod tests {
                     script_hash: "".to_string() 
                 }) 
             }), 
-            // Use dex_order_book_utxo since that's what the handler expects
+            address: "addr_test1qr77kjlsarq8wy22g4flrcznjh5lkug5mvth7qhhkewgmezwvc8hnnjzy82j5twzf8dfy5gjk04yd09t488ys9605dvq4ymc4x".to_string(), 
+            collateral_utxo: Some(UTxO { 
+                input: Some(UtxoInput { 
+                    output_index: 1000, 
+                    tx_hash: "89c54b3a70ef3608355bd822b3df44c672150654fd211c8e02e37e1453e04f7d".to_string() 
+                }), 
+                output: Some(UtxoOutput { 
+                    address: "addr_test1vra9zdhfa8kteyr3mfe7adkf5nlh8jl5xcg9e7pcp5w9yhq5exvwh".to_string(), 
+                    amount: vec![Asset { 
+                        unit: "lovelace".to_string(), 
+                        quantity: "10000000".to_string() 
+                    }], 
+                    data_hash: "".to_string(), 
+                    plutus_data: "".to_string(), 
+                    script_ref: "".to_string(), 
+                    script_hash: "".to_string() 
+                }) 
+            }), 
             dex_order_book_utxo: Some(UTxO { 
                 input: Some(UtxoInput { 
                     output_index: 0, 
                     tx_hash: "5c86e2e9f538a9dd73da3c9460db330621ded0949aa7d944d697cbb60d46c9b1".to_string() 
                 }), 
                 output: Some(UtxoOutput { 
-                    address: "addr_test1wpe55jlzh3t2fk40ewtp665sg687j6g7j8pqpkt8r5x2xdce7lj3r".to_string(), 
+                    address: "addr_test1wq80wduvwq4s99cqyn0ra7qdpds7gatmxhun8vterp957zse5cnq7".to_string(), 
                     amount: vec![Asset { 
                         unit: "lovelace".to_string(), 
                         quantity: "6000000".to_string() 
                     }, Asset { 
-                        unit: "fe85de0a57a0fa92c527e5a920c2356440d1910d80528b7910e35953".to_string(), 
+                        unit: "0ae6fc26bbcb00cf8039777488a6b2c2c8ec44b8a16e48b11056e3a3".to_string(), 
                         quantity: "1".to_string() 
                     }], 
                     data_hash: "670ed73b9f3f66eddba1c0a8de8fc003f255d18be213c798cc715c414f021938".to_string(), 
@@ -177,6 +155,7 @@ mod tests {
         };
 
         let result = handler(request).await;
+        println!("Result: {:?}", result);
         assert!(result.is_ok());
     }
 }

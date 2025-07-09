@@ -1,0 +1,125 @@
+name: Hibiki CI/CD
+
+on:
+  push:
+    branches: [main, master, develop]
+  pull_request:
+    branches: [main, master, develop]
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+  NETWORK_ID: "0"
+  ENV: "local"
+  PORT: "50062"
+  APP_OWNER_SEED_PHRASE: ${{ secrets.APP_OWNER_SEED_PHRASE }}
+  FEE_COLLECTOR_SEED_PHRASE: ${{ secrets.FEE_COLLECTOR_SEED_PHRASE }}
+  OWNER_VKEY: ${{ secrets.OWNER_VKEY }}
+
+jobs:
+  test:
+    name: Run Rust Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.PAT_TOKEN }}
+          submodules: recursive
+
+      - name: Install Protobuf Compiler
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y protobuf-compiler
+
+      - name: Configure Git credentials for private repositories
+        run: |
+          # Configure Git to use HTTPS with credentials for all GitHub URLs
+          git config --global credential.helper store
+          echo "https://${{ secrets.PAT_TOKEN }}:x-oauth-basic@github.com" > ~/.git-credentials
+
+          # Extra config specifically for deltadefi-protocol repos
+          git config --global url."https://${{ secrets.PAT_TOKEN }}:x-oauth-basic@github.com/deltadefi-protocol/".insteadOf "https://github.com/deltadefi-protocol/"
+
+          # General GitHub config
+          git config --global url."https://${{ secrets.PAT_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
+
+          # Debug: Show git remote URLs (will not show tokens in logs)
+          echo "Git configured for private repositories"
+
+          # Debug: Try accessing the repo manually to verify access
+          echo "Testing access to deltadefi-schema repository..."
+          git ls-remote https://github.com/deltadefi-protocol/deltadefi-schema.git | head -n 1 || echo "Manual access failed"
+
+      - name: Configure Cargo for git CLI usage
+        run: |
+          mkdir -p ~/.cargo
+          echo '[net]' > ~/.cargo/config.toml
+          echo 'git-fetch-with-cli = true' >> ~/.cargo/config.toml
+          cat ~/.cargo/config.toml
+
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - name: Cache Dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Run Tests
+        run: cargo test --verbose
+        env:
+          CARGO_NET_GIT_FETCH_WITH_CLI: true
+
+  build-docker:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.PAT_TOKEN }}
+          submodules: recursive
+
+      - name: Configure Git credentials for private repositories
+        run: |
+          # Configure Git to use HTTPS with credentials for all GitHub URLs
+          git config --global credential.helper store
+          echo "https://${{ secrets.PAT_TOKEN }}:x-oauth-basic@github.com" > ~/.git-credentials
+
+          # Extra config specifically for deltadefi-protocol repos
+          git config --global url."https://${{ secrets.PAT_TOKEN }}:x-oauth-basic@github.com/deltadefi-protocol/".insteadOf "https://github.com/deltadefi-protocol/"
+
+          # General GitHub config  
+          git config --global url."https://${{ secrets.PAT_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
+
+          echo "Git configured for private repositories"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Build Docker image (without pushing)
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          push: false
+          load: true
+          tags: hibiki:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            GITHUB_TOKEN=${{ secrets.PAT_TOKEN }}
+
+      - name: Display build time
+        run: |
+          echo "Docker build completed successfully"
+          echo "Image built: hibiki:test"

@@ -1,13 +1,19 @@
 .PHONY: run build test coverage
 
-run-grpc-server:
-	@cargo run --bin tx-grpc-server 
+test:
+	@cargo test
 
-generate-dev-ci-config:
-	@sh scripts/generate_ci_config.sh dev
+run:
+	@cargo run --bin hibiki
 
-generate-prod-ci-config:
-	@sh scripts/generate_ci_config.sh prod
+build:
+	@cargo build --release
 
-generate-container-ci-config:
-	@sh scripts/generate_ci_container_env.sh
+coverage: 
+	@RUSTFLAGS="-C instrument-coverage" cargo tarpaulin \
+					--workspace \
+					--timeout 180 \
+					--out Html \
+					--no-fail-fast \
+					--locked \
+					--engine llvm
