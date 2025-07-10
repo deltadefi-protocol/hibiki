@@ -14,6 +14,10 @@ struct SecretPayload {
 
 #[derive(Debug, Deserialize)]
 struct AccessSecretVersionResponse {
+    // Use the `rename` attribute to map the JSON key "name"
+    // to the Rust field `_name`. This satisfies both serde and
+    // the compiler's unused variable warning.
+    #[serde(rename = "name")]
     _name: String,
     payload: SecretPayload,
 }
