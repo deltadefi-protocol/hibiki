@@ -7,6 +7,7 @@ aliases:
           - develop
           - staging
           - main
+          - integrate-with-gcp-secret-manager
   - &credentials_context
     context:
       - slack_creds
@@ -56,7 +57,7 @@ jobs:
           name: Prepare webhook payload
           command: |
             #Create the payload for the webhook
-            PAYLOAD="{\"repository\":\"$CIRCLE_PROJECT_REPONAME\",\"branch\":\"$CIRCLE_BRANCH\",\"commit\":\"$CIRCLE_SHA1\"}"
+            PAYLOAD="{\"repository\":\"$CIRCLE_PROJECT_REPONAME\",\"branch\":\"develop\",\"commit\":\"$CIRCLE_SHA1\"}"
             echo "export PAYLOAD='$PAYLOAD'" >> $BASH_ENV
       - run:
           name: Send webhook

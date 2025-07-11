@@ -1,6 +1,6 @@
 use std::env::var;
-use crate::utils::gcp_secret_manager;
 pub mod hydra;
+pub mod gcp_secret_manager;
 
 pub struct AppConfig {
     pub network_id: String,
