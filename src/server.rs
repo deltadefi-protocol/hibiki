@@ -13,6 +13,7 @@ use hibiki::{
         TxHashResponse,
     },
 };
+use std::time::Instant;
 use tonic::{transport::Server, Request, Response, Status};
 
 #[derive(Debug, Default)]
@@ -98,6 +99,7 @@ impl Hibiki for HibikiService {
         &self,
         request: Request<services::SignTransactionRequest>,
     ) -> Result<Response<services::SignTransactionResponse>, Status> {
+        let start = Instant::now();
         println!("Got a request - sign_transaction");
         let request_result = request.into_inner();
         let reply = match sign_transaction::handler(request_result) {
@@ -106,6 +108,7 @@ impl Hibiki for HibikiService {
                 return Err(Status::failed_precondition(e.to_string()));
             }
         };
+        println!("Time taken for sign_transaction: {:?}", start.elapsed());
         Ok(Response::new(reply))
     }
 
@@ -113,6 +116,7 @@ impl Hibiki for HibikiService {
         &self,
         request: Request<services::SignTransactionRequest>,
     ) -> Result<Response<services::SignTransactionResponse>, Status> {
+        let start = Instant::now();
         println!("Got a request - sign_transaction_with_fee_collector");
         let request_result = request.into_inner();
         let reply = match sign_transaction_with_fee_collector::handler(request_result) {
@@ -121,6 +125,10 @@ impl Hibiki for HibikiService {
                 return Err(Status::failed_precondition(e.to_string()));
             }
         };
+        println!(
+            "Time taken for sign_transaction_with_fee_collector: {:?}",
+            start.elapsed()
+        );
         Ok(Response::new(reply))
     }
 

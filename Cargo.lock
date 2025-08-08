@@ -3734,9 +3734,9 @@ dependencies = [
 
 [[package]]
 name = "whisky"
-version = "1.0.9"
+version = "1.0.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b4f3ca0d4e046c342be8dba6d5004e4eb741f36add30972841c705ed3936a961"
+checksum = "100e93b77239c4155c6cd6e1aa387b141103739d224b7d81db225719aa677ca5"
 dependencies = [
  "async-trait",
  "cryptoxide",
@@ -3765,9 +3765,9 @@ dependencies = [
 
 [[package]]
 name = "whisky-common"
-version = "1.0.9"
+version = "1.0.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "35f2a5a2134785597589b9dce535ac96af957d390689ec2a8f1542555863d7c8"
+checksum = "2685223e9736b6489b5b1a5cd364ef070f0524548bb5d2d710620965e466608a"
 dependencies = [
  "async-trait",
  "hex",
@@ -3780,9 +3780,9 @@ dependencies = [
 
 [[package]]
 name = "whisky-csl"
-version = "1.0.9"
+version = "1.0.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "31b97bb60f8036981db6114360a11375d112ae8f102a65a445508188bd9d43cf"
+checksum = "6d3b742bd39851573b57e156c1da841f06de0a4bb3ca04472e39bc587ff7c8ab"
 dependencies = [
  "cardano-serialization-lib",
  "cryptoxide",
@@ -3807,9 +3807,9 @@ dependencies = [
 
 [[package]]
 name = "whisky-macros"
-version = "1.0.9"
+version = "1.0.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "003884e8316c687b6c9670174b076a0e22e0ca02d3859ad28a22789783c5e4a1"
+checksum = "a463fc25f42c050b3c7d812100bf81240764f227f5e843fa9799ed2400be5948"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3818,9 +3818,9 @@ dependencies = [
 
 [[package]]
 name = "whisky-provider"
-version = "1.0.9"
+version = "1.0.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9f4965974e4d9345348d3495daf4f0d2ccc423aed9beb65e8339045ce65944f1"
+checksum = "e63d0eaf87427c2f00becb1a65752c071e259a05a7844432dc55c35f07cf0e04"
 dependencies = [
  "async-trait",
  "futures",
@@ -3836,9 +3836,9 @@ dependencies = [
 
 [[package]]
 name = "whisky-wallet"
-version = "1.0.9"
+version = "1.0.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a0d8d5426b8d056e0b69fb24e2f9a6aa6e473f38871632b8fd225e2e554eaead"
+checksum = "a668eb1c12e743c165ac84a8c8629fdbe86e6d498aaec4bd0c5d9624b73d09b6"
 dependencies = [
  "aes-gcm",
  "base64 0.22.1",
