@@ -1,6 +1,6 @@
 use dotenv::dotenv;
 use std::env;
-use whisky::calculate_tx_hash;
+use whisky::{calculate_tx_hash, Wallet};
 
 use hibiki::{
     handler::{
@@ -12,12 +12,15 @@ use hibiki::{
         hibiki_server::{Hibiki, HibikiServer},
         TxHashResponse,
     },
+    utils::wallet::{get_app_owner_wallet, get_fee_collector_wallet},
 };
 use std::time::Instant;
 use tonic::{transport::Server, Request, Response, Status};
 
-#[derive(Debug, Default)]
-pub struct HibikiService {}
+pub struct HibikiService {
+    pub app_owner_wallet: Wallet,
+    pub fee_collector_wallet: Wallet,
+}
 
 #[tonic::async_trait]
 impl Hibiki for HibikiService {
@@ -53,7 +56,7 @@ impl Hibiki for HibikiService {
     ) -> Result<Response<services::ProcessTransferResponse>, Status> {
         let request_result = request.into_inner();
         println!("Got a request - process_transfer {:?}", request_result);
-        let reply = match process_transfer::handler(request_result).await {
+        let reply = match process_transfer::handler(request_result, &self.app_owner_wallet).await {
             Ok(value) => value,
             Err(e) => {
                 return Err(Status::failed_precondition(e.to_string()));
@@ -71,7 +74,9 @@ impl Hibiki for HibikiService {
             "Got a request - create_hydra_account_utxo {:?}",
             request_result
         );
-        let reply = match create_hydra_account_utxo::handler(request_result).await {
+        let reply = match create_hydra_account_utxo::handler(request_result, &self.app_owner_wallet)
+            .await
+        {
             Ok(value) => value,
             Err(e) => {
                 return Err(Status::failed_precondition(e.to_string()));
@@ -102,7 +107,7 @@ impl Hibiki for HibikiService {
         let start = Instant::now();
         println!("Got a request - sign_transaction");
         let request_result = request.into_inner();
-        let reply = match sign_transaction::handler(request_result) {
+        let reply = match sign_transaction::handler(request_result, &self.app_owner_wallet) {
             Ok(value) => value,
             Err(e) => {
                 return Err(Status::failed_precondition(e.to_string()));
@@ -119,7 +124,10 @@ impl Hibiki for HibikiService {
         let start = Instant::now();
         println!("Got a request - sign_transaction_with_fee_collector");
         let request_result = request.into_inner();
-        let reply = match sign_transaction_with_fee_collector::handler(request_result) {
+        let reply = match sign_transaction_with_fee_collector::handler(
+            request_result,
+            &self.fee_collector_wallet,
+        ) {
             Ok(value) => value,
             Err(e) => {
                 return Err(Status::failed_precondition(e.to_string()));
@@ -153,7 +161,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     dotenv().ok();
     let port = env::var("PORT").unwrap_or_else(|_| "50051".to_string());
     let addr = format!("0.0.0.0:{}", port).parse()?;
-    let transactions = HibikiService::default();
+    let transactions = HibikiService {
+        app_owner_wallet: get_app_owner_wallet(),
+        fee_collector_wallet: get_fee_collector_wallet(),
+    };
 
     println!("Server listening on port {}...", port);
     Server::builder()
