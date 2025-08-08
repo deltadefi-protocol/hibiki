@@ -1,9 +1,6 @@
 use whisky::{calculate_tx_hash, CSLParser, WError, Wallet};
 
-use crate::{
-    services::{SignTransactionRequest, SignTransactionResponse},
-    utils::wallet::get_app_owner_wallet,
-};
+use crate::services::{SignTransactionRequest, SignTransactionResponse};
 
 pub fn check_signature_sign_tx(wallet: &Wallet, tx_hex: &str) -> Result<String, WError> {
     let signed_tx = wallet.sign_tx(tx_hex).unwrap();
@@ -25,13 +22,10 @@ pub fn check_signature_sign_tx(wallet: &Wallet, tx_hex: &str) -> Result<String, 
     Ok(signed_tx)
 }
 
-pub fn app_sign_tx(tx_hex: &str) -> Result<String, WError> {
-    let app_owner_wallet = get_app_owner_wallet();
-    check_signature_sign_tx(&app_owner_wallet, tx_hex)
-}
-
-pub fn handler(request: SignTransactionRequest) -> Result<SignTransactionResponse, WError> {
-    let app_owner_wallet = get_app_owner_wallet();
+pub fn handler(
+    request: SignTransactionRequest,
+    app_owner_wallet: &Wallet,
+) -> Result<SignTransactionResponse, WError> {
     let tx_hex = request.tx_hex;
     let signed_tx = check_signature_sign_tx(&app_owner_wallet, &tx_hex)?;
     let tx_hash = calculate_tx_hash(&signed_tx)?;
@@ -41,6 +35,8 @@ pub fn handler(request: SignTransactionRequest) -> Result<SignTransactionRespons
 
 #[cfg(test)]
 mod tests {
+    use crate::utils::wallet::get_app_owner_wallet;
+
     use super::*;
     use dotenv::dotenv;
 

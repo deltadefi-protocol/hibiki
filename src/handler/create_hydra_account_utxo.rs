@@ -1,9 +1,9 @@
 use hibiki_proto::services::{CreateHydraAccountUtxoRequest, CreateHydraAccountUtxoResponse};
-use whisky::{calculate_tx_hash, data::Value, Asset, Budget, WError, WRedeemer};
+use whisky::{calculate_tx_hash, data::Value, Asset, Budget, WError, WRedeemer, Wallet};
 
 use crate::{
     config::AppConfig,
-    handler::sign_transaction,
+    handler::sign_transaction::{ check_signature_sign_tx},
     scripts::{
         hydra_account_balance_minting_blueprint, hydra_account_balance_spending_blueprint,
         HydraAccountBalanceDatum, MintPolarity, UserAccount,
@@ -13,6 +13,7 @@ use crate::{
 
 pub async fn handler(
     request: CreateHydraAccountUtxoRequest,
+    app_owner_wallet: &Wallet,
 ) -> Result<CreateHydraAccountUtxoResponse, WError> {
     let AppConfig { app_owner_vkey, .. } = AppConfig::new();
 
@@ -69,7 +70,7 @@ pub async fn handler(
 
     let tx_hex = tx_builder.tx_hex();
     let tx_hash = calculate_tx_hash(&tx_hex)?;
-    let signed_tx = sign_transaction::app_sign_tx(&tx_hex)?;
+    let signed_tx = check_signature_sign_tx(app_owner_wallet, &tx_hex)?;
 
     Ok(CreateHydraAccountUtxoResponse {
         signed_tx,
@@ -81,6 +82,8 @@ pub async fn handler(
 
 #[cfg(test)]
 mod tests {
+    use crate::utils::wallet::get_app_owner_wallet;
+
     use super::*;
     use dotenv::dotenv;
     use hibiki_proto::services::{AccountInfo, Asset, UTxO, UtxoInput, UtxoOutput};
@@ -154,7 +157,8 @@ mod tests {
             }) 
         };
 
-        let result = handler(request).await;
+        let app_owner_wallet = get_app_owner_wallet();
+        let result = handler(request, &app_owner_wallet).await;
         println!("Result: {:?}", result);
         assert!(result.is_ok());
     }

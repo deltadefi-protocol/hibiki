@@ -2,12 +2,12 @@ use hibiki_proto::services::{ProcessTransferRequest, ProcessTransferResponse};
 use whisky::{
     calculate_tx_hash,
     data::{Constr0, Value},
-    Budget, WError, WRedeemer,
+    Budget, WError, WRedeemer, Wallet,
 };
 
 use crate::{
     config::AppConfig,
-    handler::sign_transaction,
+    handler::sign_transaction::check_signature_sign_tx,
     scripts::{
         hydra_account_balance_spending_blueprint, hydra_user_intent_minting_blueprint,
         hydra_user_intent_spending_blueprint, HydraAccountBalanceDatum, HydraUserIntentRedeemer,
@@ -19,7 +19,10 @@ use crate::{
     },
 };
 
-pub async fn handler(request: ProcessTransferRequest) -> Result<ProcessTransferResponse, WError> {
+pub async fn handler(
+    request: ProcessTransferRequest,
+    app_owner_wallet: &Wallet,
+) -> Result<ProcessTransferResponse, WError> {
     let AppConfig { app_owner_vkey, .. } = AppConfig::new();
 
     let colleteral = from_proto_utxo(request.collateral_utxo.as_ref().unwrap());
@@ -128,7 +131,7 @@ pub async fn handler(request: ProcessTransferRequest) -> Result<ProcessTransferR
 
     let tx_hex = tx_builder.tx_hex();
     let tx_hash = calculate_tx_hash(&tx_hex)?;
-    let signed_tx = sign_transaction::app_sign_tx(&tx_hex)?;
+    let signed_tx = check_signature_sign_tx(app_owner_wallet, &tx_hex)?;
 
     Ok(ProcessTransferResponse {
         signed_tx,
@@ -140,6 +143,8 @@ pub async fn handler(request: ProcessTransferRequest) -> Result<ProcessTransferR
 
 #[cfg(test)]
 mod tests {
+    use crate::utils::wallet::get_app_owner_wallet;
+
     use super::*;
     use dotenv::dotenv;
     use hibiki_proto::services::{AccountInfo, Asset, UTxO, UtxoInput, UtxoOutput};
@@ -299,7 +304,8 @@ mod tests {
             })
         };
 
-        let result = handler(request).await;
+        let app_owner_wallet = get_app_owner_wallet();
+        let result = handler(request, &app_owner_wallet).await;
         println!("Result: {:?}", result);
         assert!(result.is_ok());
     }
