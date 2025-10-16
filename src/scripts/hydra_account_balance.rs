@@ -1,10 +1,10 @@
 use super::types::UserAccount;
 use crate::config::AppConfig;
 use crate::scripts::MintPolarity;
-use whisky::data::Value;
+use whisky::data::{byte_string, Value};
 use whisky::utils::blueprint::MintingBlueprint;
-use whisky::ConstrEnum;
 use whisky::{utils::blueprint::SpendingBlueprint, LanguageVersion};
+use whisky::{BuilderDataType, ConstrEnum};
 
 #[derive(Debug, Clone, ConstrEnum)]
 pub enum HydraAccountBalanceRedeemer {
@@ -26,23 +26,28 @@ pub enum HydraAccountBalanceDatum {
 
 pub fn hydra_account_balance_spending_blueprint(
 ) -> SpendingBlueprint<(), HydraAccountBalanceRedeemer, HydraAccountBalanceDatum> {
-    let AppConfig { network_id, .. } = AppConfig::new();
+    let AppConfig {
+        network_id,
+        dex_oracle_nft,
+        ..
+    } = AppConfig::new();
     let mut blueprint =
         SpendingBlueprint::new(LanguageVersion::V3, network_id.parse().unwrap(), None);
     blueprint
-      .no_param_script(
-          "58b658b40101009800aba2a6011e581cfa5136e9e9ecbc9071da73eeb6c9a4ff73cbf436105cf8380d1c525c00a6010847392d7370656e640048c8c8c8c88c88966002646464646464660020026eb0c038c03cc03cc03cc03cc03cc03cc03cc03cc030dd5180718061baa0072259800800c52844c96600266e3cdd71808001005c528c4cc00c00c00500d1808000a01c300c300d002300b001300b002300900130063754003149a26cac8028dd7000ab9a5573caae7d5d09",
-      )
-      .unwrap();
+    .param_script(
+        "58c958c70101009800aba2a6011e581cfa5136e9e9ecbc9071da73eeb6c9a4ff73cbf436105cf8380d1c525c00a6011b5819312d68796472612d696e7465726e616c2d7472616e736665720048c8c8c8c88c88966002646464646464660020026eb0c038c03cc03cc03cc03cc03cc03cc03cc03cc030dd5180718061baa0072259800800c52844c96600266e3cdd71808001005c528c4cc00c00c00500d1808000a01c300c300d002300b001300b002300900130063754003149a26cac8028dd7000ab9a5573caae7d5d09",
+&[&byte_string(&dex_oracle_nft).to_string(), ],BuilderDataType::JSON,)
+    .unwrap();
     blueprint
 }
 pub fn hydra_account_balance_minting_blueprint() -> MintingBlueprint<(), MintPolarity> {
+    let AppConfig { dex_oracle_nft, .. } = AppConfig::new();
     let mut blueprint = MintingBlueprint::new(LanguageVersion::V3);
     blueprint
-      .no_param_script(
-          "58b558b30101009800aba2a6011e581cfa5136e9e9ecbc9071da73eeb6c9a4ff73cbf436105cf8380d1c525c00a6010746392d6d696e740048c8c8c8c88c88966002646464646464660020026eb0c038c03cc03cc03cc03cc03cc03cc03cc03cc030dd5180718061baa0072259800800c52844c96600266e3cdd71808001005c528c4cc00c00c00500d1808000a01c300c300d002300b001300b002300900130063754003149a26cac8028dd7000ab9a5573caae7d5d09",
-      )
-      .unwrap();
+    .param_script(
+        "58c958c70101009800aba2a6011e581cfa5136e9e9ecbc9071da73eeb6c9a4ff73cbf436105cf8380d1c525c00a6011b5819312d68796472612d696e7465726e616c2d7472616e736665720048c8c8c8c88c88966002646464646464660020026eb0c038c03cc03cc03cc03cc03cc03cc03cc03cc030dd5180718061baa0072259800800c52844c96600266e3cdd71808001005c528c4cc00c00c00500d1808000a01c300c300d002300b001300b002300900130063754003149a26cac8028dd7000ab9a5573caae7d5d09",
+&[&byte_string(&dex_oracle_nft).to_string(), ],BuilderDataType::JSON,)
+    .unwrap();
     blueprint
 }
 
