@@ -10,8 +10,8 @@ use crate::{
     handler::sign_transaction::check_signature_sign_tx,
     scripts::{
         hydra_account_balance_spending_blueprint, hydra_user_intent_minting_blueprint,
-        hydra_user_intent_spending_blueprint, HydraAccountBalanceDatum, HydraUserIntentRedeemer,
-        UserAccount,
+        hydra_user_intent_spending_blueprint, HydraAccountBalanceDatum,
+        HydraAccountBalanceRedeemer, HydraUserIntentRedeemer, UserAccount,
     },
     utils::{
         hydra::get_hydra_tx_builder,
@@ -69,7 +69,8 @@ pub async fn handler(
         )
         .tx_in_inline_datum_present()
         .tx_in_redeemer_value(&WRedeemer {
-            data: user_intent_spend.redeemer(Constr0::new(())),
+            data: account_balance_spend
+                .redeemer(HydraAccountBalanceRedeemer::UpdateBalanceWithTransfer),
             ex_units: Budget::default(),
         })
         .tx_in_script(&user_intent_spend.cbor)
@@ -94,7 +95,8 @@ pub async fn handler(
         )
         .tx_in_inline_datum_present()
         .tx_in_redeemer_value(&WRedeemer {
-            data: user_intent_spend.redeemer(Constr0::new(())),
+            data: account_balance_spend
+                .redeemer(HydraAccountBalanceRedeemer::UpdateBalanceWithTransfer),
             ex_units: Budget::default(),
         })
         .tx_in_script(&account_balance_spend.cbor)
