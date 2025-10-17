@@ -7,11 +7,12 @@ use whisky::{
 
 use crate::{
     config::AppConfig,
-    handler::sign_transaction::check_signature_sign_tx,
+    handler::{internal_transfer, sign_transaction::check_signature_sign_tx},
     scripts::{
-        hydra_account_balance_spending_blueprint, hydra_user_intent_minting_blueprint,
-        hydra_user_intent_spending_blueprint, HydraAccountBalanceDatum,
-        HydraAccountBalanceRedeemer, HydraUserIntentRedeemer, UserAccount,
+        hydra_account_balance_spending_blueprint, hydra_internal_transfer_blueprint,
+        hydra_user_intent_minting_blueprint, hydra_user_intent_spending_blueprint,
+        HydraAccountBalanceDatum, HydraAccountBalanceRedeemer, HydraUserIntentRedeemer,
+        UserAccount,
     },
     utils::{
         hydra::get_hydra_tx_builder,
@@ -38,6 +39,7 @@ pub async fn handler(
     let user_intent_mint = hydra_user_intent_minting_blueprint();
     let user_intent_spend = hydra_user_intent_spending_blueprint();
     let account_balance_spend = hydra_account_balance_spending_blueprint();
+    let internal_transfer_withdraw = hydra_internal_transfer_blueprint();
 
     let mut tx_builder = get_hydra_tx_builder();
     tx_builder
@@ -118,6 +120,14 @@ pub async fn handler(
             ex_units: Budget::default(),
         })
         .minting_script(&user_intent_mint.cbor)
+        // withdrawal logic
+        .withdrawal_plutus_script_v3()
+        .withdrawal(&internal_transfer_withdraw.address, 0)
+        .withdrawal_redeemer_value(&WRedeemer {
+            data: user_intent_spend.redeemer(Constr0::new(())),
+            ex_units: Budget::default(),
+        })
+        .withdrawal_script(&internal_transfer_withdraw.cbor)
         // common
         .tx_in_collateral(
             &colleteral.input.tx_hash,
