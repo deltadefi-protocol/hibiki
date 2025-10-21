@@ -51,6 +51,7 @@ pub fn hydra_account_balance_minting_blueprint() -> MintingBlueprint<(), MintPol
     blueprint
 }
 
+// used for migration from belvedere to hibiki
 // #[cfg(test)]
 // mod tests {
 

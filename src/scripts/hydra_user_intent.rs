@@ -84,6 +84,7 @@ pub fn hydra_user_intent_minting_blueprint() -> MintingBlueprint<(), HydraUserIn
     blueprint
 }
 
+// used for migration from belvedere to hibiki
 // #[cfg(test)]
 // mod tests {
 //     use super::*;
