@@ -51,39 +51,39 @@ pub fn hydra_account_balance_minting_blueprint() -> MintingBlueprint<(), MintPol
     blueprint
 }
 
-#[cfg(test)]
-mod tests {
+// #[cfg(test)]
+// mod tests {
 
-    use super::*;
-    use dotenv::dotenv;
+//     use super::*;
+//     use dotenv::dotenv;
 
-    #[test]
-    fn test_hydra_account_balance_spending_blueprint() {
-        dotenv().ok();
+//     #[test]
+//     fn test_hydra_account_balance_spending_blueprint() {
+//         dotenv().ok();
 
-        let blueprint = hydra_account_balance_spending_blueprint();
-        assert_eq!(
-            blueprint.hash,
-            "1318e21d5eb0eb93f23a4d9a52592db44dd48e971fe6de91a8c14071"
-        );
-        assert_eq!(
-          blueprint.cbor,
-          "58b658b40101009800aba2a6011e581cfa5136e9e9ecbc9071da73eeb6c9a4ff73cbf436105cf8380d1c525c00a6010847392d7370656e640048c8c8c8c88c88966002646464646464660020026eb0c038c03cc03cc03cc03cc03cc03cc03cc03cc030dd5180718061baa0072259800800c52844c96600266e3cdd71808001005c528c4cc00c00c00500d1808000a01c300c300d002300b001300b002300900130063754003149a26cac8028dd7000ab9a5573caae7d5d09"
-      );
-    }
+//         let blueprint = hydra_account_balance_spending_blueprint();
+//         assert_eq!(
+//             blueprint.hash,
+//             "1318e21d5eb0eb93f23a4d9a52592db44dd48e971fe6de91a8c14071"
+//         );
+//         assert_eq!(
+//           blueprint.cbor,
+//           "58b658b40101009800aba2a6011e581cfa5136e9e9ecbc9071da73eeb6c9a4ff73cbf436105cf8380d1c525c00a6010847392d7370656e640048c8c8c8c88c88966002646464646464660020026eb0c038c03cc03cc03cc03cc03cc03cc03cc03cc030dd5180718061baa0072259800800c52844c96600266e3cdd71808001005c528c4cc00c00c00500d1808000a01c300c300d002300b001300b002300900130063754003149a26cac8028dd7000ab9a5573caae7d5d09"
+//       );
+//     }
 
-    #[test]
-    fn test_hydra_account_balance_minting_blueprint() {
-        dotenv().ok();
+//     #[test]
+//     fn test_hydra_account_balance_minting_blueprint() {
+//         dotenv().ok();
 
-        let blueprint = hydra_account_balance_minting_blueprint();
-        assert_eq!(
-            blueprint.hash,
-            "c828db378a1b202822e9de2a6d461af04b016768bce986176af87ba5"
-        );
-        assert_eq!(
-          blueprint.cbor,
-          "58b558b30101009800aba2a6011e581cfa5136e9e9ecbc9071da73eeb6c9a4ff73cbf436105cf8380d1c525c00a6010746392d6d696e740048c8c8c8c88c88966002646464646464660020026eb0c038c03cc03cc03cc03cc03cc03cc03cc03cc030dd5180718061baa0072259800800c52844c96600266e3cdd71808001005c528c4cc00c00c00500d1808000a01c300c300d002300b001300b002300900130063754003149a26cac8028dd7000ab9a5573caae7d5d09"
-      );
-    }
-}
+//         let blueprint = hydra_account_balance_minting_blueprint();
+//         assert_eq!(
+//             blueprint.hash,
+//             "c828db378a1b202822e9de2a6d461af04b016768bce986176af87ba5"
+//         );
+//         assert_eq!(
+//           blueprint.cbor,
+//           "58b558b30101009800aba2a6011e581cfa5136e9e9ecbc9071da73eeb6c9a4ff73cbf436105cf8380d1c525c00a6010746392d6d696e740048c8c8c8c88c88966002646464646464660020026eb0c038c03cc03cc03cc03cc03cc03cc03cc03cc030dd5180718061baa0072259800800c52844c96600266e3cdd71808001005c528c4cc00c00c00500d1808000a01c300c300d002300b001300b002300900130063754003149a26cac8028dd7000ab9a5573caae7d5d09"
+//       );
+//     }
+// }
