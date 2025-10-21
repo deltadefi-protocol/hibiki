@@ -85,7 +85,7 @@ pub async fn handler(request: InternalTransferRequest) -> Result<IntentTxRespons
     })
 }
 
-// todo: update datum and redeemer tests
+// todo: update dexOrderBook datum tests
 // #[cfg(test)]
 // mod tests {
 //     use hibiki_proto::services::{AccountInfo, Asset, UTxO, UtxoInput, UtxoOutput};
