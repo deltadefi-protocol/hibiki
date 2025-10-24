@@ -1133,9 +1133,15 @@ version = "0.1.0"
 dependencies = [
  "async-trait",
  "base64 0.21.7",
+ "chrono",
  "dotenv",
+ "futures",
  "gouth",
  "hibiki-proto",
+ "http 0.2.12",
+ "hyper 0.14.32",
+ "lazy_static",
+ "prometheus",
  "prost",
  "reqwest 0.11.27",
  "serde",
@@ -1143,13 +1149,14 @@ dependencies = [
  "tokio",
  "tonic",
  "tonic-build",
+ "tower 0.4.13",
  "whisky",
 ]
 
 [[package]]
 name = "hibiki-proto"
 version = "0.2.0"
-source = "git+https://github.com/deltadefi-protocol/deltadefi-schema.git?tag=v1.1.85#17825baae0dbc81ed81d9fa0ac7860d7fcba23dd"
+source = "git+https://github.com/deltadefi-protocol/deltadefi-schema.git?tag=v1.2.4#8844300420756a22c2a9e0dc176306f7ddf9a2a3"
 dependencies = [
  "prost",
  "tonic",
@@ -2254,6 +2261,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "prometheus"
+version = "0.13.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3d33c28a30771f7f96db69893f78b857f7450d7e0237e9c8fc6427a81bae7ed1"
+dependencies = [
+ "cfg-if",
+ "fnv",
+ "lazy_static",
+ "memchr",
+ "parking_lot",
+ "protobuf",
+ "thiserror",
+]
+
+[[package]]
 name = "prost"
 version = "0.12.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2305,6 +2327,12 @@ checksum = "9091c90b0a32608e984ff2fa4091273cbdd755d54935c51d520887f4a1dbd5b0"
 dependencies = [
  "prost",
 ]
+
+[[package]]
+name = "protobuf"
+version = "2.28.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "106dd99e98437432fed6519dedecfade6a06a73bb7b2a1e019fdd2bee5778d94"
 
 [[package]]
 name = "ptr_meta"
@@ -3450,6 +3478,7 @@ version = "0.1.41"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "784e0ac535deb450455cbfa28a6f0df145ea1bb7ae51b821cf5e7927fdcfbdd0"
 dependencies = [
+ "log",
  "pin-project-lite",
  "tracing-attributes",
  "tracing-core",

@@ -21,10 +21,11 @@ jobs:
     name: Run Rust Tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           token: ${{ secrets.PAT_TOKEN }}
           submodules: recursive
+          persist-credentials: true
 
       - name: Install Protobuf Compiler
         run: |
@@ -85,10 +86,11 @@ jobs:
     runs-on: ubuntu-latest
     needs: test
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           token: ${{ secrets.PAT_TOKEN }}
           submodules: recursive
+          persist-credentials: true
 
       - name: Configure Git credentials for private repositories
         run: |
