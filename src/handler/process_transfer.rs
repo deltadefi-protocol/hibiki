@@ -7,7 +7,7 @@ use whisky::{
 
 use crate::{
     config::AppConfig,
-    handler::{internal_transfer, sign_transaction::check_signature_sign_tx},
+    handler::sign_transaction::check_signature_sign_tx,
     scripts::{
         hydra_account_balance_spending_blueprint, hydra_internal_transfer_blueprint,
         hydra_user_intent_minting_blueprint, hydra_user_intent_spending_blueprint,
@@ -15,7 +15,7 @@ use crate::{
         UserAccount,
     },
     utils::{
-        hydra::get_hydra_tx_builder,
+        hydra::{get_hydra_tx_builder, ref_scripts},
         proto::{from_proto_balance_utxo, from_proto_utxo},
     },
 };
@@ -41,6 +41,24 @@ pub async fn handler(
     let account_balance_spend = hydra_account_balance_spending_blueprint();
     let internal_transfer_withdraw = hydra_internal_transfer_blueprint();
 
+    // Create reference script UTxOs
+    let user_intent_spend_ref_utxo = ref_scripts::hydra_user_intent_spend(
+        colleteral.input.tx_hash.clone(),
+        colleteral.output.address.clone(),
+    );
+    let account_balance_spend_ref_utxo = ref_scripts::hydra_account_balance_spend(
+        colleteral.input.tx_hash.clone(),
+        colleteral.output.address.clone(),
+    );
+    let user_intent_mint_ref_utxo = ref_scripts::hydra_user_intent_mint(
+        colleteral.input.tx_hash.clone(),
+        colleteral.output.address.clone(),
+    );
+    let internal_transfer_withdraw_ref_utxo = ref_scripts::hydra_internal_transfer(
+        colleteral.input.tx_hash.clone(),
+        colleteral.output.address.clone(),
+    );
+
     let mut tx_builder = get_hydra_tx_builder();
     tx_builder
         // reference oracle utxo
@@ -59,8 +77,24 @@ pub async fn handler(
             data: user_intent_spend.redeemer(Constr0::new(())),
             ex_units: Budget::default(),
         })
-        .tx_in_script(&user_intent_spend.cbor)
+        .spending_tx_in_reference(
+            &user_intent_spend_ref_utxo.input.tx_hash,
+            user_intent_spend_ref_utxo.input.output_index,
+            user_intent_spend_ref_utxo
+                .output
+                .script_hash
+                .as_ref()
+                .unwrap(),
+            user_intent_spend_ref_utxo
+                .output
+                .script_ref
+                .as_ref()
+                .unwrap()
+                .len()
+                / 2,
+        )
         .input_for_evaluation(&intent_utxo)
+        .input_for_evaluation(&user_intent_spend_ref_utxo)
         // update account balance utxo
         .spending_plutus_script_v3()
         .tx_in(
@@ -75,8 +109,24 @@ pub async fn handler(
                 .redeemer(HydraAccountBalanceRedeemer::UpdateBalanceWithTransfer),
             ex_units: Budget::default(),
         })
-        .tx_in_script(&user_intent_spend.cbor)
+        .spending_tx_in_reference(
+            &account_balance_spend_ref_utxo.input.tx_hash,
+            account_balance_spend_ref_utxo.input.output_index,
+            account_balance_spend_ref_utxo
+                .output
+                .script_hash
+                .as_ref()
+                .unwrap(),
+            account_balance_spend_ref_utxo
+                .output
+                .script_ref
+                .as_ref()
+                .unwrap()
+                .len()
+                / 2,
+        )
         .input_for_evaluation(&from_account_utxo)
+        .input_for_evaluation(&account_balance_spend_ref_utxo)
         .tx_out(
             &from_account_utxo.output.address,
             &from_account_utxo.output.amount,
@@ -101,8 +151,24 @@ pub async fn handler(
                 .redeemer(HydraAccountBalanceRedeemer::UpdateBalanceWithTransfer),
             ex_units: Budget::default(),
         })
-        .tx_in_script(&account_balance_spend.cbor)
+        .spending_tx_in_reference(
+            &account_balance_spend_ref_utxo.input.tx_hash,
+            account_balance_spend_ref_utxo.input.output_index,
+            account_balance_spend_ref_utxo
+                .output
+                .script_hash
+                .as_ref()
+                .unwrap(),
+            account_balance_spend_ref_utxo
+                .output
+                .script_ref
+                .as_ref()
+                .unwrap()
+                .len()
+                / 2,
+        )
         .input_for_evaluation(&to_account_utxo)
+        .input_for_evaluation(&account_balance_spend_ref_utxo)
         .tx_out(
             &to_account_utxo.output.address,
             &to_account_utxo.output.amount,
@@ -119,7 +185,23 @@ pub async fn handler(
             data: user_intent_mint.redeemer(HydraUserIntentRedeemer::HydraUserTransfer),
             ex_units: Budget::default(),
         })
-        .minting_script(&user_intent_mint.cbor)
+        .mint_tx_in_reference(
+            &user_intent_mint_ref_utxo.input.tx_hash,
+            user_intent_mint_ref_utxo.input.output_index,
+            user_intent_mint_ref_utxo
+                .output
+                .script_hash
+                .as_ref()
+                .unwrap(),
+            user_intent_mint_ref_utxo
+                .output
+                .script_ref
+                .as_ref()
+                .unwrap()
+                .len()
+                / 2,
+        )
+        .input_for_evaluation(&user_intent_mint_ref_utxo)
         // withdrawal logic
         .withdrawal_plutus_script_v3()
         .withdrawal(&internal_transfer_withdraw.address, 0)
@@ -127,7 +209,23 @@ pub async fn handler(
             data: user_intent_spend.redeemer(Constr0::new(())),
             ex_units: Budget::default(),
         })
-        .withdrawal_script(&internal_transfer_withdraw.cbor)
+        .withdrawal_tx_in_reference(
+            &internal_transfer_withdraw_ref_utxo.input.tx_hash,
+            internal_transfer_withdraw_ref_utxo.input.output_index,
+            internal_transfer_withdraw_ref_utxo
+                .output
+                .script_hash
+                .as_ref()
+                .unwrap(),
+            internal_transfer_withdraw_ref_utxo
+                .output
+                .script_ref
+                .as_ref()
+                .unwrap()
+                .len()
+                / 2,
+        )
+        .input_for_evaluation(&internal_transfer_withdraw_ref_utxo)
         // common
         .tx_in_collateral(
             &colleteral.input.tx_hash,

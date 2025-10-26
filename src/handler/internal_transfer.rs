@@ -8,7 +8,7 @@ use crate::{
         HydraUserIntentDatum, HydraUserIntentRedeemer, UserAccount,
     },
     utils::{
-        hydra::get_hydra_tx_builder,
+        hydra::{get_hydra_tx_builder, ref_scripts},
         proto::{from_proto_amount, from_proto_utxo},
     },
 };
@@ -38,6 +38,12 @@ pub async fn handler(request: InternalTransferRequest) -> Result<IntentTxRespons
     let datum_json =
         HydraUserIntentDatum::TransferIntent(from_account, to_account, transfer_amount);
 
+    // Create reference script UTXO for hydra user intent mint
+    let mint_ref_utxo = ref_scripts::hydra_user_intent_mint(
+        colleteral.input.tx_hash.clone(),
+        colleteral.output.address.clone(),
+    );
+
     tx_builder
         .read_only_tx_in_reference(&ref_input.input.tx_hash, ref_input.input.output_index, None)
         .input_for_evaluation(&ref_input)
@@ -47,7 +53,13 @@ pub async fn handler(request: InternalTransferRequest) -> Result<IntentTxRespons
             data: user_intent_mint.redeemer(redeemer_json),
             ex_units: Budget::default(),
         })
-        .minting_script(&user_intent_mint.cbor)
+        .mint_tx_in_reference(
+            &mint_ref_utxo.input.tx_hash,
+            mint_ref_utxo.input.output_index,
+            mint_ref_utxo.output.script_hash.as_ref().unwrap(),
+            mint_ref_utxo.output.script_ref.as_ref().unwrap().len() / 2,
+        )
+        .input_for_evaluation(&mint_ref_utxo)
         .tx_out(
             &user_intent_spend.address,
             &[Asset::new_from_str(&user_intent_mint.hash, "1")],

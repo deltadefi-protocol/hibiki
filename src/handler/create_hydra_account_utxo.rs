@@ -8,7 +8,10 @@ use crate::{
         hydra_account_balance_minting_blueprint, hydra_account_balance_spending_blueprint,
         HydraAccountBalanceDatum, MintPolarity, UserAccount,
     },
-    utils::{hydra::get_hydra_tx_builder, proto::from_proto_utxo},
+    utils::{
+        hydra::{get_hydra_tx_builder, ref_scripts::hydra_account_balance_mint},
+        proto::from_proto_utxo,
+    },
 };
 
 pub async fn handler(
@@ -25,6 +28,11 @@ pub async fn handler(
     let account_balance_spend = hydra_account_balance_spending_blueprint();
     let account_balance_mint = hydra_account_balance_minting_blueprint();
 
+    let hydra_account_balance_mint_ref_utxo = hydra_account_balance_mint(
+        colleteral.input.tx_hash.clone(),
+        colleteral.output.address.clone(),
+    );
+
     let mut tx_builder = get_hydra_tx_builder();
     tx_builder
         // reference oracle utxo
@@ -37,8 +45,23 @@ pub async fn handler(
             data: account_balance_mint.redeemer(MintPolarity::RMint),
             ex_units: Budget::default(),
         })
-        .minting_script(&account_balance_mint.cbor)
-        // lock it at validator
+        .mint_tx_in_reference(
+            hydra_account_balance_mint_ref_utxo.input.tx_hash.as_str(),
+            hydra_account_balance_mint_ref_utxo.input.output_index,
+            &hydra_account_balance_mint_ref_utxo
+                .output
+                .script_hash
+                .as_ref()
+                .unwrap(),
+            &hydra_account_balance_mint_ref_utxo
+                .output
+                .script_ref
+                .as_ref()
+                .unwrap()
+                .len()
+                / 2,
+        ) // lock it at validator
+        .input_for_evaluation(&hydra_account_balance_mint_ref_utxo)
         .tx_out(
             &account_balance_spend.address,
             &[Asset::new_from_str(&account_balance_mint.hash, "1")],
