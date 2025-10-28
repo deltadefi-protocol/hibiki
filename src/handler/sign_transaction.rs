@@ -5,10 +5,10 @@ use crate::services::{SignTransactionRequest, SignTransactionResponse};
 pub fn check_signature_sign_tx(wallet: &Wallet, tx_hex: &str) -> Result<String, WError> {
     let signed_tx = wallet.sign_tx(tx_hex).unwrap();
 
-    let mut tx_parser = CSLParser::new();
+    let mut tx_parser = CSLParser::new_with_body(&tx_hex)?;
     let is_transaction_fully_signed =
         tx_parser
-            .check_all_required_signers(tx_hex)
+            .check_all_required_signers()
             .map_err(WError::from_err(
                 "SignTransaction - check_all_required_signers",
             ))?;
