@@ -7,7 +7,7 @@ use whisky::{
 
 use crate::{
     config::AppConfig,
-    handler::sign_transaction::check_signature_sign_tx,
+    handler::{internal_transfer, sign_transaction::check_signature_sign_tx},
     scripts::{
         hydra_account_balance_spending_blueprint, hydra_internal_transfer_blueprint,
         hydra_user_intent_minting_blueprint, hydra_user_intent_spending_blueprint,
