@@ -3,12 +3,14 @@ use whisky::{calculate_tx_hash, CSLParser, WError, Wallet};
 use crate::services::{SignTransactionRequest, SignTransactionResponse};
 
 pub fn check_signature_sign_tx(wallet: &Wallet, tx_hex: &str) -> Result<String, WError> {
-    let signed_tx = wallet.sign_tx(tx_hex).unwrap();
+    let signed_tx = wallet
+        .sign_tx(tx_hex)
+        .map_err(WError::from_err("SignTransaction - sign_tx"))?;
 
     let mut tx_parser = CSLParser::new_with_body(&signed_tx)?;
     let is_transaction_fully_signed =
         tx_parser
-            .check_all_required_signers(tx_hex)
+            .check_all_required_signers()
             .map_err(WError::from_err(
                 "SignTransaction - check_all_required_signers",
             ))?;
