@@ -128,7 +128,8 @@ jobs:
           name: Prepare webhook payload
           command: |
             #Create the payload for the webhook
-            PAYLOAD="{\"repository\":\"$CIRCLE_PROJECT_REPONAME\",\"branch\":\"$CIRCLE_BRANCH\",\"commit\":\"$CIRCLE_SHA1\"}"
+            BRANCH_NAME="<< pipeline.event.github.pull_request.base.ref >>"
+            PAYLOAD="{\"repository\":\"$CIRCLE_PROJECT_REPONAME\",\"branch\":\"$BRANCH_NAME\",\"commit\":\"$CIRCLE_SHA1\"}"
             echo "export PAYLOAD='$PAYLOAD'" >> $BASH_ENV
       - run:
           name: Send webhook
