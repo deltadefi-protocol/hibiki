@@ -37,10 +37,11 @@ pub fn handler(
 
 #[cfg(test)]
 mod tests {
-    use crate::utils::wallet::get_app_owner_wallet;
+    use crate::{config::AppConfig, utils::wallet::get_app_owner_wallet};
 
     use super::*;
     use dotenv::dotenv;
+    use whisky::NetworkId;
 
     #[test]
     fn test_app_sign_tx_missing_user_sign() {
@@ -72,9 +73,22 @@ mod tests {
     #[test]
     fn test_sign_tx_with_private_key_hex() {
         dotenv().ok();
+        let app_config = AppConfig::new();
+
+        let network_id = match app_config
+            .network_id
+            .parse::<u8>()
+            .expect("Failed to parse network_id")
+        {
+            0 => NetworkId::Preprod,
+            1 => NetworkId::Mainnet,
+            _ => NetworkId::Preprod, // Default to Preprod
+        };
+
         let wallet =
             Wallet::new_cli("0dca9c4ec8a3ce998ca77fac1ee7440908dafbf574080b8e620cf8cdaa4cf05a")
-                .unwrap();
+                .unwrap()
+                .with_network_id(network_id);
         let tx_hex = "84a400d9010281825820e05c49b5f7bfb05ce2cb589e0e652dbf1967398fda55718c427693d4be4e9fd80101828258390004845038ee499ee8bc0afe56f688f27b2dd76f230d3698a9afcc1b66e0464447c1f51adaefe1ebfb0dd485a349a70479ced1d198cbdf7fe7821a05f5e100a1581cc69b981db7a65e339a6d783755f85a2e03afa1cece9714c55fe4c913a1445553444d1a05f5e100825839001434db8b992d8bd16ed71c521d0def5811f637d6509d8d4f620ad03ee1041668e7fd16cb2fd97e1995e1016c37f5766f387333c38185f66b821a35654c3aa2581cb80aa257a376c9ae7aa0c7a323db88d236e11e0a5ed5e10142da9ea0a14a000de14074657374313101581cc69b981db7a65e339a6d783755f85a2e03afa1cece9714c55fe4c913a1445553444d1b00000001d6e06f00021a0002aee1075820bdaa99eb158414dea0a91d6c727e2268574b23efe6e08ab3b841abe8059a030ca10081825820ee9f3061a3a5756ad2e25629e69b927b890b137e68d1c25947fc8b7da3b4445258402fcd7eb1279ca347eb139229c75f56d1c88bd1234038d22c0c3194307c0e4ebd124d415f6a86a4c3f0f2dccfa487e4f4996d7c8b661807bccff659973bc8a402f5d90103a0".to_string();
         let result = check_signature_sign_tx(&wallet, &tx_hex);
         println!("Result: {:?}", result);
