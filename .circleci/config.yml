@@ -54,10 +54,22 @@ commands:
       - run:
           name: Detect environment
           command: |
+            # Determine which branch to checkout based on PR merge status
+            PR_MERGED="<< pipeline.event.github.pull_request.merged >>"
+            if [ "$PR_MERGED" = "true" ]; then
+              # PR is merged - checkout the base branch (target branch like develop/staging/main)
+              BRANCH_NAME="<< pipeline.event.github.pull_request.base.ref >>"
+              echo "✅ PR is merged - checking out base branch: ${BRANCH_NAME}"
+            else
+              # PR is not merged - checkout the head branch (source/feature branch)
+              BRANCH_NAME="<< pipeline.event.github.pull_request.head.ref >>"
+              echo "🔨 PR is not merged - checking out head branch: ${BRANCH_NAME}"
+            fi
+
             # Determine environment based on branch
-            if [ "${CIRCLE_BRANCH}" = "main" ]; then
+            if [ "${BRANCH_NAME}" = "main" ]; then
               echo "export env=prod" >> $BASH_ENV
-            elif [ "${CIRCLE_BRANCH}" = "staging" ]; then
+            elif [ "${BRANCH_NAME}" = "staging" ]; then
               echo "export env=staging" >> $BASH_ENV
             else
               echo "export env=dev" >> $BASH_ENV
