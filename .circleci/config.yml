@@ -1,43 +1,113 @@
 version: 2.1
 aliases:
-  - &dev_stg_prod_only
-    filters:
-      branches:
-        only:
-          - develop
-          - staging
-          - main
+  - &deploy_environment
+    working_directory: ~/repo
+    docker:
+      - image: cimg/gcp:2024.08
   - &credentials_context
     context:
       - slack_creds
       - github_creds
       - gcp_creds
       - circleci_creds
-  - &deploy_environment
-    working_directory: ~/repo
-    docker:
-      - image: cimg/gcp:2024.08
 
 orbs:
-  docker: circleci/docker@2.1.4
   slack: circleci/slack@4.12.5
+  docker: circleci/docker@2.1.4
+
+commands:
+  clone_and_checkout_branch:
+    description: "Clone and checkout the specific branch for the pipeline"
+    steps:
+      - add_ssh_keys # Uses all SSH keys added to the project
+      - run:
+          name: Clone and checkout branch
+          command: |
+            # Determine which branch to checkout based on PR merge status
+            PR_MERGED="<< pipeline.event.github.pull_request.merged >>"
+
+            if [ "$PR_MERGED" = "true" ]; then
+              # PR is merged - checkout the base branch (target branch like develop/staging/main)
+              BRANCH_NAME="<< pipeline.event.github.pull_request.base.ref >>"
+              echo "✅ PR is merged - checking out base branch: ${BRANCH_NAME}"
+            else
+              # PR is not merged - checkout the head branch (source/feature branch)
+              BRANCH_NAME="<< pipeline.event.github.pull_request.head.ref >>"
+              echo "🔨 PR is not merged - checking out head branch: ${BRANCH_NAME}"
+            fi
+
+            SSH_REPO_URL="git@github.com:$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME.git"
+            echo "Using SSH repository URL: ${SSH_REPO_URL}"
+
+            # Configure git to use SSH and accept GitHub's host key
+            mkdir -p ~/.ssh
+            ssh-keyscan github.com >> ~/.ssh/known_hosts
+
+            # Clone using SSH
+            git clone "${SSH_REPO_URL}" .
+            git checkout "${BRANCH_NAME}"
+            echo "Successfully checked out branch: ${BRANCH_NAME}"
+
+  detect_environment:
+    description: "Detect environment based on branch (dev/staging/prod)"
+    steps:
+      - run:
+          name: Detect environment
+          command: |
+            # Determine environment based on branch
+            if [ "${CIRCLE_BRANCH}" = "main" ]; then
+              echo "export env=prod" >> $BASH_ENV
+            elif [ "${CIRCLE_BRANCH}" = "staging" ]; then
+              echo "export env=staging" >> $BASH_ENV
+            else
+              echo "export env=dev" >> $BASH_ENV
+            fi
+            source $BASH_ENV
+            echo "✅ Detected environment: ${env}"
+
+  setup_gcp_service_key:
+    description: "Setup GCP service key and project ID based on environment (separate for dev/staging/prod)"
+    steps:
+      - run:
+          name: Decode and setup GCP service key and project ID
+          command: |
+            # Each environment uses its own GCP service key and project ID
+            if [ "${env}" = "prod" ]; then
+              echo "🔐 Using production GCP service key and project"
+              echo ${GCP_SERVICE_KEY_PROD} | base64 --decode --ignore-garbage > ${HOME}/gcloud-service-key.json
+              echo "export GCLOUD_PROJECT_ID=${GCLOUD_PROJECT_ID_PROD}" >> $BASH_ENV
+            elif [ "${env}" = "staging" ]; then
+              echo "🔐 Using staging GCP service key and project"
+              echo ${GCP_SERVICE_KEY_STAGING} | base64 --decode --ignore-garbage > ${HOME}/gcloud-service-key.json
+              echo "export GCLOUD_PROJECT_ID=${GCLOUD_PROJECT_ID_STAGING}" >> $BASH_ENV
+            else
+              echo "🔐 Using dev GCP service key and project"
+              echo ${GCP_SERVICE_KEY_DEV} | base64 --decode --ignore-garbage > ${HOME}/gcloud-service-key.json
+              echo "export GCLOUD_PROJECT_ID=${GCLOUD_PROJECT_ID_DEV}" >> $BASH_ENV
+            fi
+            source $BASH_ENV
+            echo "✅ GCP Project ID: ${GCLOUD_PROJECT_ID}"
+
+  setup_gcloud_cli:
+    description: "Authenticate and configure gcloud CLI"
+    steps:
+      - run:
+          name: Setup gcloud CLI
+          command: |
+            gcloud auth activate-service-account --key-file=${HOME}/gcloud-service-key.json
+            gcloud config set project ${GCLOUD_PROJECT_ID}
+            gcloud auth configure-docker asia-northeast1-docker.pkg.dev --quiet
+            echo "✅ gcloud CLI configured for project: ${GCLOUD_PROJECT_ID}"
 
 jobs:
   build_and_push:
     <<: [*deploy_environment]
+    resource_class: small
     steps:
-      - checkout
-      - run:
-          name: decode GCP service key
-          command: |
-            echo 'export PATH=~$PATH:~/.local/bin' >> $BASH_ENV
-            echo ${GCP_SERVICE_KEY} | base64 --decode --ignore-garbage > ${HOME}/gcloud-service-key.json
-      - run:
-          name: Setup gcloud
-          command: |
-            gcloud auth activate-service-account --key-file=${HOME}/gcloud-service-key.json
-            gcloud config set project $GCLOUD_PROJECT_ID
-            gcloud auth configure-docker asia-northeast1-docker.pkg.dev --quiet
+      - clone_and_checkout_branch
+      - detect_environment
+      - setup_gcp_service_key
+      - setup_gcloud_cli
       - setup_remote_docker:
           docker_layer_caching: true
       - run:
@@ -49,23 +119,26 @@ jobs:
       - slack/notify:
           event: fail
           template: basic_fail_1
+
   send_webhook:
     <<: [*deploy_environment]
+    resource_class: small
     steps:
       - run:
           name: Prepare webhook payload
           command: |
             #Create the payload for the webhook
-            PAYLOAD="{\"repository\":\"$CIRCLE_PROJECT_REPONAME\",\"branch\":\"$CIRCLE_BRANCH\",\"commit\":\"$CIRCLE_SHA1\"}"
+            BRANCH_NAME="<< pipeline.event.github.pull_request.base.ref >>"
+            PAYLOAD="{\"repository\":\"$CIRCLE_PROJECT_REPONAME\",\"branch\":\"$BRANCH_NAME\",\"commit\":\"$CIRCLE_SHA1\"}"
             echo "export PAYLOAD='$PAYLOAD'" >> $BASH_ENV
       - run:
           name: Send webhook
           command: |
-            HTTP_STATUS=$(
-            curl -X POST -H "Content-Type: application/json" \
+            HTTP_STATUS=$(curl -X POST -H "Content-Type: application/json" \
             -d "$PAYLOAD" \
-            ${WEBHOOK_URL}
-            )
+            -w "%{http_code}" \
+            -o /dev/null \
+            ${WEBHOOK_URL})
             if [ "$HTTP_STATUS" -ne 200 ]; then
               echo "Webhook failed with status $HTTP_STATUS"
               exit 1
@@ -80,13 +153,41 @@ jobs:
           template: basic_success_1
 
 workflows:
-  version: 2
-  build_and_push_workflow:
-    when: pipeline.event.name == "push"
+  # Deploy to dev when changes are pushed/merged to develop branch
+  deploy_dev:
+    when: pipeline.event.github.pull_request.base.ref == "develop" and pipeline.event.github.pull_request.merged == true
     jobs:
       - build_and_push:
-          <<: [*credentials_context, *dev_stg_prod_only]
+          <<: [*credentials_context]
       - send_webhook:
-          <<: [*credentials_context, *dev_stg_prod_only]
+          <<: [*credentials_context]
           requires:
             - build_and_push
+
+  # Deploy to staging when changes are pushed/merged to staging branch
+  deploy_staging:
+    when: pipeline.event.github.pull_request.base.ref == "staging" and pipeline.event.github.pull_request.merged == true
+    jobs:
+      - build_and_push:
+          <<: [*credentials_context]
+      - send_webhook:
+          <<: [*credentials_context]
+          requires:
+            - build_and_push
+
+  # Deploy to prod when changes are pushed/merged to main branch (requires manual approval)
+  deploy_prod:
+    when: pipeline.event.github.pull_request.base.ref == "main" and pipeline.event.github.pull_request.merged == true
+    jobs:
+      - build_and_push:
+          <<: [*credentials_context]
+      - hold:
+          type: approval
+          context: prod_restricted_context
+          requires:
+            - build_and_push
+      - send_webhook:
+          <<: [*credentials_context]
+          requires:
+            - build_and_push
+            - hold
