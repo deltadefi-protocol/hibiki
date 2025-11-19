@@ -166,15 +166,15 @@ jobs:
 
 workflows:
   # Deploy to dev when changes are pushed/merged to develop branch
-  deploy_dev:
-    when: pipeline.event.github.pull_request.base.ref == "develop" and pipeline.event.github.pull_request.merged == true
-    jobs:
-      - build_and_push:
-          <<: [*credentials_context]
-      - send_webhook:
-          <<: [*credentials_context]
-          requires:
-            - build_and_push
+  # deploy_dev:
+  #   when: pipeline.event.github.pull_request.base.ref == "develop" and pipeline.event.github.pull_request.merged == true
+  #   jobs:
+  #     - build_and_push:
+  #         <<: [*credentials_context]
+  #     - send_webhook:
+  #         <<: [*credentials_context]
+  #         requires:
+  #           - build_and_push
 
   # Deploy to staging when changes are pushed/merged to staging branch
   deploy_staging:
