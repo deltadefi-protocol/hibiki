@@ -1,15 +1,16 @@
 use hibiki_proto::services::{IntentTxResponse, InternalTransferRequest};
-use whisky::{calculate_tx_hash, data::Value, Asset, Budget, WError, WRedeemer};
+use whisky::{calculate_tx_hash, Asset, Budget, WError, WRedeemer};
 
 use crate::{
     config::AppConfig,
+    constant::dex_oracle_nft,
     scripts::{
-        hydra_user_intent_minting_blueprint, hydra_user_intent_spending_blueprint,
-        HydraUserIntentDatum, HydraUserIntentRedeemer, UserAccount,
+        hydra_user_intent_mint_minting_blueprint, hydra_user_intent_spend_spending_blueprint,
+        HydraAccountIntent, HydraUserIntentDatum, MasterIntent, MintMasterIntent, UserAccount,
     },
     utils::{
         hydra::get_hydra_tx_builder,
-        proto::{from_proto_amount, from_proto_utxo},
+        proto::{assets_to_mvalue, from_proto_amount, from_proto_utxo},
     },
 };
 
@@ -22,25 +23,23 @@ pub async fn handler(request: InternalTransferRequest) -> Result<IntentTxRespons
     let account = request.account.unwrap();
 
     let mut tx_builder = get_hydra_tx_builder();
-    let user_intent_mint = hydra_user_intent_minting_blueprint();
-    let user_intent_spend = hydra_user_intent_spending_blueprint();
+    let policy_id = whisky::data::PolicyId::new(dex_oracle_nft());
+    let user_intent_mint = hydra_user_intent_mint_minting_blueprint(policy_id.clone());
+    let user_intent_spend = hydra_user_intent_spend_spending_blueprint(policy_id);
 
     let from_account = UserAccount::from_proto(&account);
     let to_account = UserAccount::from_proto(&request.receiver_account.unwrap());
-    let transfer_amount = Value::from_asset_vec(&from_proto_amount(&request.to_transfer));
+    let transfer_amount = assets_to_mvalue(&from_proto_amount(&request.to_transfer));
 
-    let redeemer_json = HydraUserIntentRedeemer::MintTransferIntent(
-        from_account.clone(),
-        to_account.clone(),
-        transfer_amount.clone(),
-    );
-
+    // Create transfer intent
+    let hydra_account_intent = HydraAccountIntent::transfer(to_account, transfer_amount);
+    let redeemer_json = MintMasterIntent::new(from_account.clone(), hydra_account_intent.clone());
     let datum_json =
-        HydraUserIntentDatum::TransferIntent(from_account, to_account, transfer_amount);
+        HydraUserIntentDatum::MasterIntent(MasterIntent::new(from_account, hydra_account_intent));
 
     tx_builder
         .read_only_tx_in_reference(&ref_input.input.tx_hash, ref_input.input.output_index, None)
-        .input_for_evaluation(&ref_input)
+        // .input_for_evaluation(&ref_input)
         .mint_plutus_script_v3()
         .mint(1, &user_intent_mint.hash, "")
         .mint_redeemer_value(&WRedeemer {
@@ -59,7 +58,7 @@ pub async fn handler(request: InternalTransferRequest) -> Result<IntentTxRespons
             &empty_utxo.output.amount,
             &empty_utxo.output.address,
         )
-        .input_for_evaluation(&empty_utxo)
+        // .input_for_evaluation(&empty_utxo)
         .tx_out(&empty_utxo.output.address, &empty_utxo.output.amount)
         .required_signer_hash(&app_owner_vkey)
         .required_signer_hash(&account.master_key)
@@ -69,7 +68,7 @@ pub async fn handler(request: InternalTransferRequest) -> Result<IntentTxRespons
             &colleteral.output.amount,
             &colleteral.output.address,
         )
-        .input_for_evaluation(&colleteral)
+        // .input_for_evaluation(&colleteral)
         .change_address(&request.address)
         .complete(None)
         .await?;
