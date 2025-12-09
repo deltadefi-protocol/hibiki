@@ -1,4 +1,5 @@
-use hibiki_proto::services::{ProcessTransferRequest, ProcessTransferResponse};
+use hibiki_proto::services::{ProcessTransferRequest, ProcessTransferResponse, UnitTxIndexMap};
+use std::collections::HashMap;
 use whisky::{
     calculate_tx_hash,
     data::{Constr, List, PlutusData},
@@ -16,7 +17,7 @@ use crate::{
     },
     utils::{
         hydra::get_hydra_tx_builder,
-        proto::{from_proto_balance_utxo, from_proto_utxo},
+        proto::{extract_transfer_amount_from_intent, from_proto_balance_utxos, from_proto_utxo},
     },
 };
 
@@ -31,16 +32,25 @@ pub async fn handler(
     let intent_utxo = from_proto_utxo(request.transferral_intent_utxo.as_ref().unwrap());
     let from_account = UserAccount::from_proto(request.account.as_ref().unwrap());
     let to_account = UserAccount::from_proto(request.receiver_account.as_ref().unwrap());
-    let (from_updated_balance, from_account_utxo) =
-        from_proto_balance_utxo(request.account_balance_utxo.as_ref().unwrap());
-    let (to_updated_balance, to_account_utxo) =
-        from_proto_balance_utxo(request.receiver_account_balance_utxo.as_ref().unwrap());
+
+    // Parse sender's balance UTXOs
+    let (from_updated_balance, from_account_utxos) =
+        from_proto_balance_utxos(request.account_balance_utxos.as_ref().unwrap());
+
+    let to_updated_balance = extract_transfer_amount_from_intent(&intent_utxo)?;
+
+    // For outputs, we need one UTXO address - use the first sender's UTXO address as template
+    let account_balance_address = &from_account_utxos[0].output.address;
 
     let policy_id = whisky::data::PolicyId::new(dex_oracle_nft());
     let user_intent_mint = hydra_user_intent_mint_minting_blueprint(policy_id.clone());
     let user_intent_spend = hydra_user_intent_spend_spending_blueprint(policy_id.clone());
     let account_balance_spend = hydra_account_spend_spending_blueprint(policy_id.clone());
     let internal_transfer_withdraw = hydra_account_withdraw_withdrawal_blueprint(policy_id);
+
+    let mut from_unit_tx_index_map: HashMap<String, u32> = HashMap::new();
+    let mut to_unit_tx_index_map: HashMap<String, u32> = HashMap::new();
+    let mut current_index = 0u32;
 
     let mut tx_builder = get_hydra_tx_builder();
     tx_builder
@@ -71,29 +81,61 @@ pub async fn handler(
         )
         // .input_for_evaluation(&intent_utxo)
         // update account balance utxo
-        .spending_plutus_script_v3()
-        .tx_in(
-            &from_account_utxo.input.tx_hash,
-            from_account_utxo.input.output_index,
-            &from_account_utxo.output.amount,
-            &from_account_utxo.output.address,
-        )
-        .tx_in_inline_datum_present()
-        .tx_in_redeemer_value(&WRedeemer {
-            data: account_balance_spend.redeemer(HydraAccountRedeemer::HydraAccountOperate),
-            ex_units: Budget::default(),
-        })
-        .spending_tx_in_reference(
-            colleteral.input.tx_hash.as_str(),
-            l2_ref_scripts_index::hydra_account_balance::SPEND,
-            &account_balance_spend.hash,
-            account_balance_spend.cbor.len() / 2,
-        ) // .input_for_evaluation(&from_account_utxo)
-        .tx_out(&from_account_utxo.output.address, &from_updated_balance)
-        .tx_out_inline_datum_value(&account_balance_spend.datum(from_account))
-        // create new receiver account balance utxo
-        .tx_out(&to_account_utxo.output.address, &to_updated_balance)
-        .tx_out_inline_datum_value(&account_balance_spend.datum(to_account))
+        .spending_plutus_script_v3();
+
+    // Spend all sender's account balance UTXOs
+    for from_utxo in &from_account_utxos {
+        tx_builder
+            .tx_in(
+                &from_utxo.input.tx_hash,
+                from_utxo.input.output_index,
+                &from_utxo.output.amount,
+                &from_utxo.output.address,
+            )
+            .tx_in_inline_datum_present()
+            .tx_in_redeemer_value(&WRedeemer {
+                data: account_balance_spend.redeemer(HydraAccountRedeemer::HydraAccountOperate),
+                ex_units: Budget::default(),
+            })
+            .spending_tx_in_reference(
+                colleteral.input.tx_hash.as_str(),
+                l2_ref_scripts_index::hydra_account_balance::SPEND,
+                &account_balance_spend.hash,
+                account_balance_spend.cbor.len() / 2,
+            );
+    }
+
+    // Filter non-lovelace assets for from_account and output each separately
+    let from_non_lovelace_assets: Vec<_> = from_updated_balance
+        .iter()
+        .filter(|asset| !asset.unit().is_empty() && asset.unit() != "lovelace")
+        .collect();
+
+    for asset in from_non_lovelace_assets {
+        tx_builder
+            .tx_out(account_balance_address, &[asset.clone()])
+            .tx_out_inline_datum_value(&account_balance_spend.datum(from_account.clone()));
+
+        from_unit_tx_index_map.insert(asset.unit().to_string(), current_index);
+        current_index += 1;
+    }
+
+    // Filter non-lovelace assets for to_account and output each separately
+    let to_non_lovelace_assets: Vec<_> = to_updated_balance
+        .iter()
+        .filter(|asset| !asset.unit().is_empty() && asset.unit() != "lovelace")
+        .collect();
+
+    for asset in to_non_lovelace_assets {
+        tx_builder
+            .tx_out(account_balance_address, &[asset.clone()])
+            .tx_out_inline_datum_value(&account_balance_spend.datum(to_account.clone()));
+
+        to_unit_tx_index_map.insert(asset.unit().to_string(), current_index);
+        current_index += 1;
+    }
+
+    tx_builder
         .mint_plutus_script_v3()
         .mint(-1, &user_intent_mint.hash, "")
         .mint_redeemer_value(&WRedeemer {
@@ -137,8 +179,12 @@ pub async fn handler(
     Ok(ProcessTransferResponse {
         signed_tx,
         tx_hash,
-        account_utxo_tx_index: 0,
-        receiver_account_utxo_tx_index: 1,
+        account_utxo_tx_index_unit_map: Some(UnitTxIndexMap {
+            unit_tx_index: from_unit_tx_index_map,
+        }),
+        receiver_account_utxo_tx_index_unit_map: Some(UnitTxIndexMap {
+            unit_tx_index: to_unit_tx_index_map,
+        }),
     })
 }
 

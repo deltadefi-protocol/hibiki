@@ -4,3 +4,5 @@ mod utxo;
 pub use utxo::*;
 mod account_balance_utxo;
 pub use account_balance_utxo::*;
+mod datum;
+pub use datum::*;
