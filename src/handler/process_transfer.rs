@@ -1,18 +1,18 @@
 use hibiki_proto::services::{ProcessTransferRequest, ProcessTransferResponse};
 use whisky::{
     calculate_tx_hash,
-    data::{Constr0, Value},
+    data::{Constr, List, PlutusData},
     Budget, WError, WRedeemer, Wallet,
 };
 
 use crate::{
     config::AppConfig,
+    constant::dex_oracle_nft,
     handler::sign_transaction::check_signature_sign_tx,
     scripts::{
-        hydra_account_balance_spending_blueprint, hydra_internal_transfer_blueprint,
-        hydra_user_intent_minting_blueprint, hydra_user_intent_spending_blueprint,
-        HydraAccountBalanceDatum, HydraAccountBalanceRedeemer, HydraUserIntentRedeemer,
-        UserAccount,
+        hydra_account_spend_spending_blueprint, hydra_account_withdraw_withdrawal_blueprint,
+        hydra_user_intent_mint_minting_blueprint, hydra_user_intent_spend_spending_blueprint,
+        HydraAccountOperation, HydraAccountRedeemer, HydraUserIntentRedeemer, UserAccount,
     },
     utils::{
         hydra::get_hydra_tx_builder,
@@ -36,16 +36,17 @@ pub async fn handler(
     let (to_updated_balance, to_account_utxo) =
         from_proto_balance_utxo(request.receiver_account_balance_utxo.as_ref().unwrap());
 
-    let user_intent_mint = hydra_user_intent_minting_blueprint();
-    let user_intent_spend = hydra_user_intent_spending_blueprint();
-    let account_balance_spend = hydra_account_balance_spending_blueprint();
-    let internal_transfer_withdraw = hydra_internal_transfer_blueprint();
+    let policy_id = whisky::data::PolicyId::new(dex_oracle_nft());
+    let user_intent_mint = hydra_user_intent_mint_minting_blueprint(policy_id.clone());
+    let user_intent_spend = hydra_user_intent_spend_spending_blueprint(policy_id.clone());
+    let account_balance_spend = hydra_account_spend_spending_blueprint(policy_id.clone());
+    let internal_transfer_withdraw = hydra_account_withdraw_withdrawal_blueprint(policy_id);
 
     let mut tx_builder = get_hydra_tx_builder();
     tx_builder
         // reference oracle utxo
         .read_only_tx_in_reference(&ref_input.input.tx_hash, ref_input.input.output_index, None)
-        .input_for_evaluation(&ref_input)
+        // .input_for_evaluation(&ref_input)
         // spending intent utxo
         .spending_plutus_script_v3()
         .tx_in(
@@ -56,11 +57,14 @@ pub async fn handler(
         )
         .tx_in_inline_datum_present()
         .tx_in_redeemer_value(&WRedeemer {
-            data: user_intent_spend.redeemer(Constr0::new(())),
+            data: user_intent_spend.redeemer(PlutusData::Constr(Constr::new(
+                1,
+                Box::new(PlutusData::List(List::new(&[]))),
+            ))),
             ex_units: Budget::default(),
         })
         .tx_in_script(&user_intent_spend.cbor)
-        .input_for_evaluation(&intent_utxo)
+        // .input_for_evaluation(&intent_utxo)
         // update account balance utxo
         .spending_plutus_script_v3()
         .tx_in(
@@ -71,52 +75,20 @@ pub async fn handler(
         )
         .tx_in_inline_datum_present()
         .tx_in_redeemer_value(&WRedeemer {
-            data: account_balance_spend
-                .redeemer(HydraAccountBalanceRedeemer::UpdateBalanceWithTransfer),
-            ex_units: Budget::default(),
-        })
-        .tx_in_script(&user_intent_spend.cbor)
-        .input_for_evaluation(&from_account_utxo)
-        .tx_out(
-            &from_account_utxo.output.address,
-            &from_account_utxo.output.amount,
-        )
-        .tx_out_inline_datum_value(
-            &account_balance_spend.datum(HydraAccountBalanceDatum::Datum(
-                from_account,
-                Value::from_asset_vec(&from_updated_balance),
-            )),
-        )
-        // update receiver account balance utxo
-        .spending_plutus_script_v3()
-        .tx_in(
-            &to_account_utxo.input.tx_hash,
-            to_account_utxo.input.output_index,
-            &to_account_utxo.output.amount,
-            &to_account_utxo.output.address,
-        )
-        .tx_in_inline_datum_present()
-        .tx_in_redeemer_value(&WRedeemer {
-            data: account_balance_spend
-                .redeemer(HydraAccountBalanceRedeemer::UpdateBalanceWithTransfer),
+            data: account_balance_spend.redeemer(HydraAccountRedeemer::HydraAccountOperate),
             ex_units: Budget::default(),
         })
         .tx_in_script(&account_balance_spend.cbor)
-        .input_for_evaluation(&to_account_utxo)
-        .tx_out(
-            &to_account_utxo.output.address,
-            &to_account_utxo.output.amount,
-        )
-        .tx_out_inline_datum_value(
-            &account_balance_spend.datum(HydraAccountBalanceDatum::Datum(
-                to_account,
-                Value::from_asset_vec(&to_updated_balance),
-            )),
-        )
+        // .input_for_evaluation(&from_account_utxo)
+        .tx_out(&from_account_utxo.output.address, &from_updated_balance)
+        .tx_out_inline_datum_value(&account_balance_spend.datum(from_account))
+        // create new receiver account balance utxo
+        .tx_out(&to_account_utxo.output.address, &to_updated_balance)
+        .tx_out_inline_datum_value(&account_balance_spend.datum(to_account))
         .mint_plutus_script_v3()
         .mint(-1, &user_intent_mint.hash, "")
         .mint_redeemer_value(&WRedeemer {
-            data: user_intent_mint.redeemer(HydraUserIntentRedeemer::HydraUserTransfer),
+            data: user_intent_mint.redeemer(HydraUserIntentRedeemer::BurnIntent),
             ex_units: Budget::default(),
         })
         .minting_script(&user_intent_mint.cbor)
@@ -124,7 +96,7 @@ pub async fn handler(
         .withdrawal_plutus_script_v3()
         .withdrawal(&internal_transfer_withdraw.address, 0)
         .withdrawal_redeemer_value(&WRedeemer {
-            data: user_intent_spend.redeemer(Constr0::new(())),
+            data: internal_transfer_withdraw.redeemer(HydraAccountOperation::ProcessTransferal),
             ex_units: Budget::default(),
         })
         .withdrawal_script(&internal_transfer_withdraw.cbor)
