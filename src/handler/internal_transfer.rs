@@ -3,7 +3,7 @@ use whisky::{calculate_tx_hash, Asset, Budget, WError, WRedeemer};
 
 use crate::{
     config::AppConfig,
-    constant::dex_oracle_nft,
+    constant::{dex_oracle_nft, l2_ref_scripts_index},
     scripts::{
         hydra_user_intent_mint_minting_blueprint, hydra_user_intent_spend_spending_blueprint,
         HydraAccountIntent, HydraUserIntentDatum, MasterIntent, MintMasterIntent, UserAccount,
@@ -46,7 +46,12 @@ pub async fn handler(request: InternalTransferRequest) -> Result<IntentTxRespons
             data: user_intent_mint.redeemer(redeemer_json),
             ex_units: Budget::default(),
         })
-        .minting_script(&user_intent_mint.cbor)
+        .mint_tx_in_reference(
+            &colleteral.input.tx_hash,
+            l2_ref_scripts_index::hydra_user_intent::MINT,
+            &user_intent_mint.hash,
+            user_intent_mint.cbor.len() / 2,
+        )
         .tx_out(
             &user_intent_spend.address,
             &[Asset::new_from_str(&user_intent_mint.hash, "1")],

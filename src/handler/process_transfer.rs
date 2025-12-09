@@ -7,7 +7,7 @@ use whisky::{
 
 use crate::{
     config::AppConfig,
-    constant::dex_oracle_nft,
+    constant::{dex_oracle_nft, l2_ref_scripts_index},
     handler::sign_transaction::check_signature_sign_tx,
     scripts::{
         hydra_account_spend_spending_blueprint, hydra_account_withdraw_withdrawal_blueprint,
@@ -63,7 +63,12 @@ pub async fn handler(
             ))),
             ex_units: Budget::default(),
         })
-        .tx_in_script(&user_intent_spend.cbor)
+        .spending_tx_in_reference(
+            colleteral.input.tx_hash.as_str(),
+            l2_ref_scripts_index::hydra_user_intent::SPEND,
+            &user_intent_mint.hash,
+            user_intent_mint.cbor.len() / 2,
+        )
         // .input_for_evaluation(&intent_utxo)
         // update account balance utxo
         .spending_plutus_script_v3()
@@ -78,8 +83,12 @@ pub async fn handler(
             data: account_balance_spend.redeemer(HydraAccountRedeemer::HydraAccountOperate),
             ex_units: Budget::default(),
         })
-        .tx_in_script(&account_balance_spend.cbor)
-        // .input_for_evaluation(&from_account_utxo)
+        .spending_tx_in_reference(
+            colleteral.input.tx_hash.as_str(),
+            l2_ref_scripts_index::hydra_account_balance::SPEND,
+            &account_balance_spend.hash,
+            account_balance_spend.cbor.len() / 2,
+        ) // .input_for_evaluation(&from_account_utxo)
         .tx_out(&from_account_utxo.output.address, &from_updated_balance)
         .tx_out_inline_datum_value(&account_balance_spend.datum(from_account))
         // create new receiver account balance utxo
@@ -91,23 +100,31 @@ pub async fn handler(
             data: user_intent_mint.redeemer(HydraUserIntentRedeemer::BurnIntent),
             ex_units: Budget::default(),
         })
-        .minting_script(&user_intent_mint.cbor)
-        // withdrawal logic
+        .mint_tx_in_reference(
+            &colleteral.input.tx_hash,
+            l2_ref_scripts_index::hydra_user_intent::MINT,
+            &user_intent_mint.hash,
+            user_intent_mint.cbor.len() / 2,
+        ) // withdrawal logic
         .withdrawal_plutus_script_v3()
         .withdrawal(&internal_transfer_withdraw.address, 0)
         .withdrawal_redeemer_value(&WRedeemer {
             data: internal_transfer_withdraw.redeemer(HydraAccountOperation::ProcessTransferal),
             ex_units: Budget::default(),
         })
-        .withdrawal_script(&internal_transfer_withdraw.cbor)
-        // common
+        .withdrawal_tx_in_reference(
+            &colleteral.input.tx_hash,
+            l2_ref_scripts_index::hydra_account_balance::WITHDRAWAL,
+            &internal_transfer_withdraw.hash,
+            internal_transfer_withdraw.cbor.len() / 2,
+        ) // common
         .tx_in_collateral(
             &colleteral.input.tx_hash,
             colleteral.input.output_index,
             &colleteral.output.amount,
             &colleteral.output.address,
         )
-        .input_for_evaluation(&colleteral)
+        // .input_for_evaluation(&colleteral)
         .change_address(&request.address)
         .required_signer_hash(&app_owner_vkey)
         .complete(None)
