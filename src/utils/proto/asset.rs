@@ -29,25 +29,19 @@ pub fn assets_to_mvalue(assets: &[Asset]) -> MValue {
         let unit = asset.unit();
         let quantity = asset.quantity().parse::<i128>().unwrap_or(0);
 
-        let (policy_id, asset_name) = if unit == "lovelace" || unit == "" {
-            ("".to_string(), "".to_string())
+        let (policy_id, asset_name): (&str, &str) = if unit == "lovelace" || unit == "" {
+            ("", "")
         } else if unit.len() >= 56 {
-            let policy_hex = unit[0..56].to_string();
-            let asset_hex = if unit.len() > 56 {
-                unit[56..].to_string()
-            } else {
-                "".to_string()
-            };
-            (policy_hex, asset_hex)
+            let asset_hex = if unit.len() > 56 { &unit[56..] } else { "" };
+            (&unit[0..56], asset_hex)
         } else {
-            // Invalid format, skip
             continue;
         };
 
         outer_map
-            .entry(policy_id)
+            .entry(policy_id.to_string())
             .or_insert_with(BTreeMap::new)
-            .insert(asset_name, Int::new(quantity));
+            .insert(asset_name.to_string(), Int::new(quantity));
     }
 
     // Convert BTreeMap to Vec of tuples with ByteString keys

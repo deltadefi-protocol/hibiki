@@ -75,7 +75,7 @@ pub fn parse_mvalue_to_assets(mvalue_map: &serde_json::Value) -> Result<Vec<Asse
             let unit = if token_name.is_empty() {
                 policy_id.to_string()
             } else {
-                format!("{}{}", policy_id, token_name)
+                [policy_id, token_name].concat()
             };
 
             assets.push(Asset::new(unit, quantity.to_string()));

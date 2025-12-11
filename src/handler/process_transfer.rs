@@ -54,8 +54,21 @@ pub async fn handler(
     let account_balance_spend = hydra_account_spend_spending_blueprint(&policy_id);
     let internal_transfer_withdraw = hydra_account_withdraw_withdrawal_blueprint(&policy_id);
 
-    let mut from_unit_tx_index_map: HashMap<u32, AssetList> = HashMap::new();
-    let mut to_unit_tx_index_map: HashMap<u32, AssetList> = HashMap::new();
+    // Filter non-lovelace assets
+    let from_non_lovelace_assets: Vec<_> = from_updated_balance
+        .iter()
+        .filter(|asset| !asset.unit().is_empty() && asset.unit() != "lovelace")
+        .collect();
+    let to_non_lovelace_assets: Vec<_> = to_updated_balance
+        .iter()
+        .filter(|asset| !asset.unit().is_empty() && asset.unit() != "lovelace")
+        .collect();
+
+    let mut from_unit_tx_index_map: HashMap<u32, AssetList> =
+        HashMap::with_capacity(from_non_lovelace_assets.len());
+    let mut to_unit_tx_index_map: HashMap<u32, AssetList> =
+        HashMap::with_capacity(to_non_lovelace_assets.len());
+
     let mut current_index = 0u32;
 
     let mut tx_builder = get_hydra_tx_builder();
@@ -111,12 +124,6 @@ pub async fn handler(
             );
     }
 
-    // Filter non-lovelace assets for from_account and output each separately
-    let from_non_lovelace_assets: Vec<_> = from_updated_balance
-        .iter()
-        .filter(|asset| !asset.unit().is_empty() && asset.unit() != "lovelace")
-        .collect();
-
     let from_account_datum = account_balance_spend.datum(from_account.clone());
     for asset in from_non_lovelace_assets {
         tx_builder
@@ -134,12 +141,6 @@ pub async fn handler(
         );
         current_index += 1;
     }
-
-    // Filter non-lovelace assets for to_account and output each separately
-    let to_non_lovelace_assets: Vec<_> = to_updated_balance
-        .iter()
-        .filter(|asset| !asset.unit().is_empty() && asset.unit() != "lovelace")
-        .collect();
 
     let to_account_datum = account_balance_spend.datum(to_account.clone());
     for asset in to_non_lovelace_assets {
@@ -203,12 +204,20 @@ pub async fn handler(
     Ok(ProcessTransferResponse {
         signed_tx,
         tx_hash,
-        account_utxo_tx_index_unit_map: Some(UnitTxIndexMap {
-            unit_tx_index_map: from_unit_tx_index_map,
-        }),
-        receiver_account_utxo_tx_index_unit_map: Some(UnitTxIndexMap {
-            unit_tx_index_map: to_unit_tx_index_map,
-        }),
+        account_utxo_tx_index_unit_map: if from_unit_tx_index_map.is_empty() {
+            None
+        } else {
+            Some(UnitTxIndexMap {
+                unit_tx_index_map: from_unit_tx_index_map,
+            })
+        },
+        receiver_account_utxo_tx_index_unit_map: if to_unit_tx_index_map.is_empty() {
+            None
+        } else {
+            Some(UnitTxIndexMap {
+                unit_tx_index_map: to_unit_tx_index_map,
+            })
+        },
     })
 }
 

@@ -33,40 +33,40 @@ pub struct AppOracleScripts {
 
 pub struct AppVaultScripts {
     pub spend: fn(
-        PolicyId,
+        &PolicyId,
     ) -> whisky::SpendingBlueprint<
         PolicyId,
         whisky::data::PlutusData,
         whisky::data::PlutusData,
     >,
     pub withdrawal:
-        fn(PolicyId) -> whisky::WithdrawalBlueprint<PolicyId, ProcessAppWithdrawalRedeemer>,
+        fn(&PolicyId) -> whisky::WithdrawalBlueprint<PolicyId, ProcessAppWithdrawalRedeemer>,
 }
 
 pub struct AppDepositRequestScripts {
-    pub mint: fn(PolicyId) -> whisky::MintingBlueprint<PolicyId, MintPolarity>,
+    pub mint: fn(&PolicyId) -> whisky::MintingBlueprint<PolicyId, MintPolarity>,
     pub spend: fn(
-        PolicyId,
+        &PolicyId,
     ) -> whisky::SpendingBlueprint<
         PolicyId,
         AppDepositRequestRedeemer,
         AppDepositRequestDatum,
     >,
-    pub withdrawal: fn(PolicyId) -> whisky::WithdrawalBlueprint<PolicyId, ProcessAppDeposit>,
+    pub withdrawal: fn(&PolicyId) -> whisky::WithdrawalBlueprint<PolicyId, ProcessAppDeposit>,
 }
 
 pub struct EmergencyRequestScripts {
-    pub cancel_order_mint: fn(PolicyId) -> whisky::MintingBlueprint<PolicyId, MintPolarity>,
+    pub cancel_order_mint: fn(&PolicyId) -> whisky::MintingBlueprint<PolicyId, MintPolarity>,
     pub cancel_order_spend: fn(
-        PolicyId,
+        &PolicyId,
     ) -> whisky::SpendingBlueprint<
         PolicyId,
         EmergencyCancelRequestRedeemer,
         EmergencyCancelRequestDatum,
     >,
-    pub withdrawal_mint: fn(PolicyId) -> whisky::MintingBlueprint<PolicyId, MintPolarity>,
+    pub withdrawal_mint: fn(&PolicyId) -> whisky::MintingBlueprint<PolicyId, MintPolarity>,
     pub withdrawal_spend: fn(
-        PolicyId,
+        &PolicyId,
     ) -> whisky::SpendingBlueprint<
         PolicyId,
         EmergencyWithdrawalRequestRedeemer,
@@ -75,7 +75,7 @@ pub struct EmergencyRequestScripts {
 }
 
 pub struct DexAccountBalanceScripts {
-    pub mint: fn(PolicyId) -> whisky::MintingBlueprint<PolicyId, MintPolarity>,
+    pub mint: fn(&PolicyId) -> whisky::MintingBlueprint<PolicyId, MintPolarity>,
     pub spend: fn(
         (PolicyId, PolicyId),
     ) -> whisky::SpendingBlueprint<
@@ -95,31 +95,32 @@ pub struct DexOrderBookScripts {
         DexOrderBookDatum,
     >,
     pub emergency_cancel:
-        fn(PolicyId) -> whisky::WithdrawalBlueprint<PolicyId, EmergencyCancelRedeemer>,
+        fn(&PolicyId) -> whisky::WithdrawalBlueprint<PolicyId, EmergencyCancelRedeemer>,
 }
 
 pub struct HydraUserIntentScripts {
-    pub mint: fn(PolicyId) -> whisky::MintingBlueprint<PolicyId, HydraUserIntentRedeemer>,
+    pub mint: fn(&PolicyId) -> whisky::MintingBlueprint<PolicyId, HydraUserIntentRedeemer>,
     pub spend:
         fn(
-            PolicyId,
+            &PolicyId,
         )
             -> whisky::SpendingBlueprint<PolicyId, whisky::data::PlutusData, HydraUserIntentDatum>,
 }
 
 pub struct HydraAccountBalanceScripts {
     pub spend:
-        fn(PolicyId) -> whisky::SpendingBlueprint<PolicyId, HydraAccountRedeemer, UserAccount>,
-    pub withdrawal: fn(PolicyId) -> whisky::WithdrawalBlueprint<PolicyId, HydraAccountOperation>,
+        fn(&PolicyId) -> whisky::SpendingBlueprint<PolicyId, HydraAccountRedeemer, UserAccount>,
+    pub withdrawal: fn(&PolicyId) -> whisky::WithdrawalBlueprint<PolicyId, HydraAccountOperation>,
 }
 
 pub struct HydraOrderBookScripts {
-    pub spend: fn(PolicyId) -> whisky::SpendingBlueprint<PolicyId, whisky::data::PlutusData, Order>,
-    pub withdrawal: fn(PolicyId) -> whisky::WithdrawalBlueprint<PolicyId, HydraOrderBookRedeemer>,
+    pub spend:
+        fn(&PolicyId) -> whisky::SpendingBlueprint<PolicyId, whisky::data::PlutusData, Order>,
+    pub withdrawal: fn(&PolicyId) -> whisky::WithdrawalBlueprint<PolicyId, HydraOrderBookRedeemer>,
 }
 
 pub struct HydraTokenScripts {
-    pub mint: fn(PolicyId) -> whisky::MintingBlueprint<PolicyId, HydraTokensRedeemer>,
+    pub mint: fn(&PolicyId) -> whisky::MintingBlueprint<PolicyId, HydraTokensRedeemer>,
 }
 
 pub const SCRIPTS: Scripts = Scripts {

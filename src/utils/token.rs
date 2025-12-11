@@ -25,7 +25,10 @@ pub fn to_hydra_token(assets: &[Asset]) -> Vec<Asset> {
                 hydra_token_hash.to_string()
             } else {
                 let hashed_unit = blake2b_256_hex(&asset.unit());
-                format!("{}{}", hydra_token_hash, hashed_unit)
+                let mut result = String::with_capacity(hydra_token_hash.len() + hashed_unit.len());
+                result.push_str(hydra_token_hash);
+                result.push_str(&hashed_unit);
+                result
             };
 
             Asset::new_from_str(&new_unit, &asset.quantity())

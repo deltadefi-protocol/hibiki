@@ -67,7 +67,7 @@ impl UserAccount {
         );
 
         let policy_id = PolicyId::new(dex_oracle_nft());
-        let blueprint = (SCRIPTS.hydra_order_book.withdrawal)(policy_id);
+        let blueprint = (SCRIPTS.hydra_order_book.withdrawal)(&policy_id);
         let script_hash = ScriptHash::new(&blueprint.hash);
 
         match account_info.account_type.as_str() {
