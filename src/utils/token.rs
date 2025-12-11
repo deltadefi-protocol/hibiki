@@ -2,18 +2,27 @@ use blake2::{
     digest::{Update, VariableOutput},
     Blake2bVar,
 };
-use std::env;
+use std::sync::OnceLock;
 use whisky::Asset;
 
+static HYDRA_TOKEN_HASH: OnceLock<String> = OnceLock::new();
+
+pub fn hydra_token_hash() -> &'static str {
+    HYDRA_TOKEN_HASH.get_or_init(|| {
+        std::env::var("HYDRA_TOKEN_HASH").unwrap_or_else(|_| {
+            "c828db378a1b202822e9de2a6d461af04b016768bce986176af87ba5".to_string()
+        })
+    })
+}
+
 pub fn to_hydra_token(assets: &[Asset]) -> Vec<Asset> {
-    let hydra_token_hash = env::var("HYDRA_TOKEN_HASH")
-        .unwrap_or_else(|_| "c828db378a1b202822e9de2a6d461af04b016768bce986176af87ba5".to_string());
+    let hydra_token_hash = hydra_token_hash();
 
     assets
         .iter()
         .map(|asset| {
             let new_unit = if asset.unit() == "lovelace" || asset.unit().is_empty() {
-                hydra_token_hash.clone()
+                hydra_token_hash.to_string()
             } else {
                 let hashed_unit = blake2b_256_hex(&asset.unit());
                 format!("{}{}", hydra_token_hash, hashed_unit)

@@ -17,15 +17,15 @@ use crate::{
 // Changed from async to synchronous function to avoid Send issues with Rc<T>
 pub async fn handler(request: InternalTransferRequest) -> Result<IntentTxResponse, WError> {
     let AppConfig { app_owner_vkey, .. } = AppConfig::new();
-    let colleteral = from_proto_utxo(request.collateral_utxo.as_ref().unwrap());
+    let collateral = from_proto_utxo(request.collateral_utxo.as_ref().unwrap());
     let empty_utxo = from_proto_utxo(request.empty_utxo.as_ref().unwrap());
     let ref_input = from_proto_utxo(request.dex_order_book_utxo.as_ref().unwrap());
     let account = request.account.unwrap();
 
     let mut tx_builder = get_hydra_tx_builder();
     let policy_id = whisky::data::PolicyId::new(dex_oracle_nft());
-    let user_intent_mint = hydra_user_intent_mint_minting_blueprint(policy_id.clone());
-    let user_intent_spend = hydra_user_intent_spend_spending_blueprint(policy_id);
+    let user_intent_mint = hydra_user_intent_mint_minting_blueprint(&policy_id);
+    let user_intent_spend = hydra_user_intent_spend_spending_blueprint(&policy_id);
 
     let from_account = UserAccount::from_proto(&account);
     let to_account = UserAccount::from_proto(&request.receiver_account.unwrap());
@@ -47,7 +47,7 @@ pub async fn handler(request: InternalTransferRequest) -> Result<IntentTxRespons
             ex_units: Budget::default(),
         })
         .mint_tx_in_reference(
-            &colleteral.input.tx_hash,
+            &collateral.input.tx_hash,
             l2_ref_scripts_index::hydra_user_intent::MINT,
             &user_intent_mint.hash,
             user_intent_mint.cbor.len() / 2,
@@ -68,12 +68,12 @@ pub async fn handler(request: InternalTransferRequest) -> Result<IntentTxRespons
         .required_signer_hash(&app_owner_vkey)
         .required_signer_hash(&account.master_key)
         .tx_in_collateral(
-            &colleteral.input.tx_hash,
-            colleteral.input.output_index,
-            &colleteral.output.amount,
-            &colleteral.output.address,
+            &collateral.input.tx_hash,
+            collateral.input.output_index,
+            &collateral.output.amount,
+            &collateral.output.address,
         )
-        // .input_for_evaluation(&colleteral)
+        // .input_for_evaluation(&collateral)
         .change_address(&request.address)
         .complete(None)
         .await?;

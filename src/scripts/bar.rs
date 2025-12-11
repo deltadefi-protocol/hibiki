@@ -40,7 +40,7 @@ impl AppConfig {
 }
 
 pub fn app_deposit_withdraw_withdrawal_blueprint(
-    params: PolicyId,
+    params: &PolicyId,
 ) -> WithdrawalBlueprint<PolicyId, ProcessAppDeposit> {
     let app_config = AppConfig::new();
     let mut blueprint = WithdrawalBlueprint::new(app_config.plutus_version, app_config.network_id);
@@ -55,7 +55,7 @@ pub fn app_deposit_withdraw_withdrawal_blueprint(
 }
 
 pub fn app_deposit_publish_withdrawal_blueprint(
-    params: PolicyId,
+    params: &PolicyId,
 ) -> WithdrawalBlueprint<PolicyId, PlutusData> {
     let app_config = AppConfig::new();
     let mut blueprint = WithdrawalBlueprint::new(app_config.plutus_version, app_config.network_id);
@@ -70,7 +70,7 @@ pub fn app_deposit_publish_withdrawal_blueprint(
 }
 
 pub fn app_deposit_request_mint_minting_blueprint(
-    params: PolicyId,
+    params: &PolicyId,
 ) -> MintingBlueprint<PolicyId, MintPolarity> {
     let app_config = AppConfig::new();
     let mut blueprint = MintingBlueprint::new(app_config.plutus_version);
@@ -85,7 +85,7 @@ pub fn app_deposit_request_mint_minting_blueprint(
 }
 
 pub fn app_deposit_request_spend_spending_blueprint(
-    params: PolicyId,
+    params: &PolicyId,
 ) -> SpendingBlueprint<PolicyId, AppDepositRequestRedeemer, AppDepositRequestDatum> {
     let app_config = AppConfig::new();
     let mut blueprint =
@@ -127,7 +127,7 @@ pub fn app_oracle_spend_spending_blueprint(
 }
 
 pub fn app_withdrawal_withdraw_withdrawal_blueprint(
-    params: PolicyId,
+    params: &PolicyId,
 ) -> WithdrawalBlueprint<PolicyId, ProcessAppWithdrawalRedeemer> {
     let app_config = AppConfig::new();
     let mut blueprint = WithdrawalBlueprint::new(app_config.plutus_version, app_config.network_id);
@@ -142,7 +142,7 @@ pub fn app_withdrawal_withdraw_withdrawal_blueprint(
 }
 
 pub fn app_withdrawal_publish_withdrawal_blueprint(
-    params: PolicyId,
+    params: &PolicyId,
 ) -> WithdrawalBlueprint<PolicyId, PlutusData> {
     let app_config = AppConfig::new();
     let mut blueprint = WithdrawalBlueprint::new(app_config.plutus_version, app_config.network_id);
@@ -157,7 +157,7 @@ pub fn app_withdrawal_publish_withdrawal_blueprint(
 }
 
 pub fn app_vault_spend_spending_blueprint(
-    params: PolicyId,
+    params: &PolicyId,
 ) -> SpendingBlueprint<PolicyId, PlutusData, PlutusData> {
     let app_config = AppConfig::new();
     let mut blueprint =
@@ -173,7 +173,7 @@ pub fn app_vault_spend_spending_blueprint(
 }
 
 pub fn dex_account_balance_mint_minting_blueprint(
-    params: PolicyId,
+    params: &PolicyId,
 ) -> MintingBlueprint<PolicyId, MintPolarity> {
     let app_config = AppConfig::new();
     let mut blueprint = MintingBlueprint::new(app_config.plutus_version);
@@ -206,7 +206,7 @@ pub fn dex_account_balance_spend_spending_blueprint(
 }
 
 pub fn emergency_order_cancel_withdraw_withdrawal_blueprint(
-    params: PolicyId,
+    params: &PolicyId,
 ) -> WithdrawalBlueprint<PolicyId, EmergencyCancelRedeemer> {
     let app_config = AppConfig::new();
     let mut blueprint = WithdrawalBlueprint::new(app_config.plutus_version, app_config.network_id);
@@ -221,7 +221,7 @@ pub fn emergency_order_cancel_withdraw_withdrawal_blueprint(
 }
 
 pub fn emergency_order_cancel_publish_withdrawal_blueprint(
-    params: PolicyId,
+    params: &PolicyId,
 ) -> WithdrawalBlueprint<PolicyId, PlutusData> {
     let app_config = AppConfig::new();
     let mut blueprint = WithdrawalBlueprint::new(app_config.plutus_version, app_config.network_id);
@@ -254,7 +254,7 @@ pub fn dex_order_book_spend_spending_blueprint(
 }
 
 pub fn emergency_cancel_order_request_mint_minting_blueprint(
-    params: PolicyId,
+    params: &PolicyId,
 ) -> MintingBlueprint<PolicyId, MintPolarity> {
     let app_config = AppConfig::new();
     let mut blueprint = MintingBlueprint::new(app_config.plutus_version);
@@ -269,7 +269,7 @@ pub fn emergency_cancel_order_request_mint_minting_blueprint(
 }
 
 pub fn emergency_cancel_order_request_spend_spending_blueprint(
-    params: PolicyId,
+    params: &PolicyId,
 ) -> SpendingBlueprint<PolicyId, EmergencyCancelRequestRedeemer, EmergencyCancelRequestDatum> {
     let app_config = AppConfig::new();
     let mut blueprint =
@@ -285,7 +285,7 @@ pub fn emergency_cancel_order_request_spend_spending_blueprint(
 }
 
 pub fn emergency_withdrawal_request_mint_minting_blueprint(
-    params: PolicyId,
+    params: &PolicyId,
 ) -> MintingBlueprint<PolicyId, MintPolarity> {
     let app_config = AppConfig::new();
     let mut blueprint = MintingBlueprint::new(app_config.plutus_version);
@@ -300,7 +300,7 @@ pub fn emergency_withdrawal_request_mint_minting_blueprint(
 }
 
 pub fn emergency_withdrawal_request_spend_spending_blueprint(
-    params: PolicyId,
+    params: &PolicyId,
 ) -> SpendingBlueprint<PolicyId, EmergencyWithdrawalRequestRedeemer, EmergencyWithdrawalRequestDatum>
 {
     let app_config = AppConfig::new();
@@ -317,7 +317,7 @@ pub fn emergency_withdrawal_request_spend_spending_blueprint(
 }
 
 pub fn hydra_account_spend_spending_blueprint(
-    params: PolicyId,
+    params: &PolicyId,
 ) -> SpendingBlueprint<PolicyId, HydraAccountRedeemer, UserAccount> {
     let app_config = AppConfig::new();
     let mut blueprint =
@@ -333,7 +333,7 @@ pub fn hydra_account_spend_spending_blueprint(
 }
 
 pub fn hydra_account_withdraw_withdrawal_blueprint(
-    params: PolicyId,
+    params: &PolicyId,
 ) -> WithdrawalBlueprint<PolicyId, HydraAccountOperation> {
     let app_config = AppConfig::new();
     let mut blueprint = WithdrawalBlueprint::new(app_config.plutus_version, app_config.network_id);
@@ -348,7 +348,7 @@ pub fn hydra_account_withdraw_withdrawal_blueprint(
 }
 
 pub fn hydra_order_book_spend_spending_blueprint(
-    params: PolicyId,
+    params: &PolicyId,
 ) -> SpendingBlueprint<PolicyId, PlutusData, Order> {
     let app_config = AppConfig::new();
     let mut blueprint =
@@ -364,7 +364,7 @@ pub fn hydra_order_book_spend_spending_blueprint(
 }
 
 pub fn hydra_order_book_withdraw_withdrawal_blueprint(
-    params: PolicyId,
+    params: &PolicyId,
 ) -> WithdrawalBlueprint<PolicyId, HydraOrderBookRedeemer> {
     let app_config = AppConfig::new();
     let mut blueprint = WithdrawalBlueprint::new(app_config.plutus_version, app_config.network_id);
@@ -379,7 +379,7 @@ pub fn hydra_order_book_withdraw_withdrawal_blueprint(
 }
 
 pub fn hydra_order_book_publish_withdrawal_blueprint(
-    params: PolicyId,
+    params: &PolicyId,
 ) -> WithdrawalBlueprint<PolicyId, PlutusData> {
     let app_config = AppConfig::new();
     let mut blueprint = WithdrawalBlueprint::new(app_config.plutus_version, app_config.network_id);
@@ -394,7 +394,7 @@ pub fn hydra_order_book_publish_withdrawal_blueprint(
 }
 
 pub fn hydra_tokens_mint_minting_blueprint(
-    params: PolicyId,
+    params: &PolicyId,
 ) -> MintingBlueprint<PolicyId, HydraTokensRedeemer> {
     let app_config = AppConfig::new();
     let mut blueprint = MintingBlueprint::new(app_config.plutus_version);
@@ -409,7 +409,7 @@ pub fn hydra_tokens_mint_minting_blueprint(
 }
 
 pub fn hydra_user_intent_spend_spending_blueprint(
-    params: PolicyId,
+    params: &PolicyId,
 ) -> SpendingBlueprint<PolicyId, PlutusData, HydraUserIntentDatum> {
     let app_config = AppConfig::new();
     let mut blueprint =
@@ -425,7 +425,7 @@ pub fn hydra_user_intent_spend_spending_blueprint(
 }
 
 pub fn hydra_user_intent_mint_minting_blueprint(
-    params: PolicyId,
+    params: &PolicyId,
 ) -> MintingBlueprint<PolicyId, HydraUserIntentRedeemer> {
     let app_config = AppConfig::new();
     let mut blueprint = MintingBlueprint::new(app_config.plutus_version);

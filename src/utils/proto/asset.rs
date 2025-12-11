@@ -4,7 +4,7 @@ use whisky::data::{ByteString, Int, Map};
 use whisky::*;
 
 pub fn to_proto_amount(assets: &[Asset]) -> Vec<services::Asset> {
-    let mut converted_assets = vec![];
+    let mut converted_assets = Vec::with_capacity(assets.len());
     for asset in assets {
         converted_assets.push(services::Asset {
             unit: asset.unit(),
@@ -15,7 +15,7 @@ pub fn to_proto_amount(assets: &[Asset]) -> Vec<services::Asset> {
 }
 
 pub fn from_proto_amount(assets: &[services::Asset]) -> Vec<Asset> {
-    let mut converted_assets = vec![];
+    let mut converted_assets = Vec::with_capacity(assets.len());
     for asset in assets {
         converted_assets.push(Asset::new(asset.unit.clone(), asset.quantity.clone()));
     }

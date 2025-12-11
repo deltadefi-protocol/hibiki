@@ -6,8 +6,8 @@ use whisky::{calculate_tx_hash, Wallet};
 use hibiki::{
     grpc_metrics_interceptor::MetricsLayer,
     handler::{
-        create_hydra_account_utxo, internal_transfer, process_transfer,
-        serialize_transfer_intent_datum, sign_transaction, sign_transaction_with_fee_collector,
+        internal_transfer, process_transfer, serialize_transfer_intent_datum, sign_transaction,
+        sign_transaction_with_fee_collector,
     },
     metrics, metrics_server,
     services::{

@@ -1,4 +1,6 @@
-use hibiki_proto::services::{ProcessTransferRequest, ProcessTransferResponse, UnitTxIndexMap};
+use hibiki_proto::services::{
+    AssetList, ProcessTransferRequest, ProcessTransferResponse, UnitTxIndexMap,
+};
 use std::collections::HashMap;
 use whisky::{
     calculate_tx_hash,
@@ -17,7 +19,11 @@ use crate::{
     },
     utils::{
         hydra::get_hydra_tx_builder,
-        proto::{extract_transfer_amount_from_intent, from_proto_balance_utxos, from_proto_utxo},
+        proto::{
+            extract_transfer_amount_from_intent, from_proto_balance_utxos, from_proto_utxo,
+            to_proto_amount,
+        },
+        token::to_hydra_token,
     },
 };
 
@@ -27,7 +33,7 @@ pub async fn handler(
 ) -> Result<ProcessTransferResponse, WError> {
     let AppConfig { app_owner_vkey, .. } = AppConfig::new();
 
-    let colleteral = from_proto_utxo(request.collateral_utxo.as_ref().unwrap());
+    let collateral = from_proto_utxo(request.collateral_utxo.as_ref().unwrap());
     let ref_input = from_proto_utxo(request.dex_order_book_utxo.as_ref().unwrap());
     let intent_utxo = from_proto_utxo(request.transferral_intent_utxo.as_ref().unwrap());
     let from_account = UserAccount::from_proto(request.account.as_ref().unwrap());
@@ -43,13 +49,13 @@ pub async fn handler(
     let account_balance_address = &from_account_utxos[0].output.address;
 
     let policy_id = whisky::data::PolicyId::new(dex_oracle_nft());
-    let user_intent_mint = hydra_user_intent_mint_minting_blueprint(policy_id.clone());
-    let user_intent_spend = hydra_user_intent_spend_spending_blueprint(policy_id.clone());
-    let account_balance_spend = hydra_account_spend_spending_blueprint(policy_id.clone());
-    let internal_transfer_withdraw = hydra_account_withdraw_withdrawal_blueprint(policy_id);
+    let user_intent_mint = hydra_user_intent_mint_minting_blueprint(&policy_id);
+    let user_intent_spend = hydra_user_intent_spend_spending_blueprint(&policy_id);
+    let account_balance_spend = hydra_account_spend_spending_blueprint(&policy_id);
+    let internal_transfer_withdraw = hydra_account_withdraw_withdrawal_blueprint(&policy_id);
 
-    let mut from_unit_tx_index_map: HashMap<String, u32> = HashMap::new();
-    let mut to_unit_tx_index_map: HashMap<String, u32> = HashMap::new();
+    let mut from_unit_tx_index_map: HashMap<u32, AssetList> = HashMap::new();
+    let mut to_unit_tx_index_map: HashMap<u32, AssetList> = HashMap::new();
     let mut current_index = 0u32;
 
     let mut tx_builder = get_hydra_tx_builder();
@@ -74,7 +80,7 @@ pub async fn handler(
             ex_units: Budget::default(),
         })
         .spending_tx_in_reference(
-            colleteral.input.tx_hash.as_str(),
+            collateral.input.tx_hash.as_str(),
             l2_ref_scripts_index::hydra_user_intent::SPEND,
             &user_intent_mint.hash,
             user_intent_mint.cbor.len() / 2,
@@ -98,7 +104,7 @@ pub async fn handler(
                 ex_units: Budget::default(),
             })
             .spending_tx_in_reference(
-                colleteral.input.tx_hash.as_str(),
+                collateral.input.tx_hash.as_str(),
                 l2_ref_scripts_index::hydra_account_balance::SPEND,
                 &account_balance_spend.hash,
                 account_balance_spend.cbor.len() / 2,
@@ -111,12 +117,21 @@ pub async fn handler(
         .filter(|asset| !asset.unit().is_empty() && asset.unit() != "lovelace")
         .collect();
 
+    let from_account_datum = account_balance_spend.datum(from_account.clone());
     for asset in from_non_lovelace_assets {
         tx_builder
-            .tx_out(account_balance_address, &[asset.clone()])
-            .tx_out_inline_datum_value(&account_balance_spend.datum(from_account.clone()));
+            .tx_out(
+                account_balance_address,
+                &to_hydra_token(std::slice::from_ref(asset)),
+            )
+            .tx_out_inline_datum_value(&from_account_datum);
 
-        from_unit_tx_index_map.insert(asset.unit().to_string(), current_index);
+        from_unit_tx_index_map.insert(
+            current_index,
+            AssetList {
+                assets: to_proto_amount(std::slice::from_ref(asset)),
+            },
+        );
         current_index += 1;
     }
 
@@ -126,12 +141,21 @@ pub async fn handler(
         .filter(|asset| !asset.unit().is_empty() && asset.unit() != "lovelace")
         .collect();
 
+    let to_account_datum = account_balance_spend.datum(to_account.clone());
     for asset in to_non_lovelace_assets {
         tx_builder
-            .tx_out(account_balance_address, &[asset.clone()])
-            .tx_out_inline_datum_value(&account_balance_spend.datum(to_account.clone()));
+            .tx_out(
+                account_balance_address,
+                &to_hydra_token(std::slice::from_ref(asset)),
+            )
+            .tx_out_inline_datum_value(&to_account_datum);
 
-        to_unit_tx_index_map.insert(asset.unit().to_string(), current_index);
+        to_unit_tx_index_map.insert(
+            current_index,
+            AssetList {
+                assets: to_proto_amount(std::slice::from_ref(asset)),
+            },
+        );
         current_index += 1;
     }
 
@@ -143,7 +167,7 @@ pub async fn handler(
             ex_units: Budget::default(),
         })
         .mint_tx_in_reference(
-            &colleteral.input.tx_hash,
+            &collateral.input.tx_hash,
             l2_ref_scripts_index::hydra_user_intent::MINT,
             &user_intent_mint.hash,
             user_intent_mint.cbor.len() / 2,
@@ -155,18 +179,18 @@ pub async fn handler(
             ex_units: Budget::default(),
         })
         .withdrawal_tx_in_reference(
-            &colleteral.input.tx_hash,
+            &collateral.input.tx_hash,
             l2_ref_scripts_index::hydra_account_balance::WITHDRAWAL,
             &internal_transfer_withdraw.hash,
             internal_transfer_withdraw.cbor.len() / 2,
         ) // common
         .tx_in_collateral(
-            &colleteral.input.tx_hash,
-            colleteral.input.output_index,
-            &colleteral.output.amount,
-            &colleteral.output.address,
+            &collateral.input.tx_hash,
+            collateral.input.output_index,
+            &collateral.output.amount,
+            &collateral.output.address,
         )
-        // .input_for_evaluation(&colleteral)
+        // .input_for_evaluation(&collateral)
         .change_address(&request.address)
         .required_signer_hash(&app_owner_vkey)
         .complete(None)
@@ -180,10 +204,10 @@ pub async fn handler(
         signed_tx,
         tx_hash,
         account_utxo_tx_index_unit_map: Some(UnitTxIndexMap {
-            unit_tx_index: from_unit_tx_index_map,
+            unit_tx_index_map: from_unit_tx_index_map,
         }),
         receiver_account_utxo_tx_index_unit_map: Some(UnitTxIndexMap {
-            unit_tx_index: to_unit_tx_index_map,
+            unit_tx_index_map: to_unit_tx_index_map,
         }),
     })
 }
