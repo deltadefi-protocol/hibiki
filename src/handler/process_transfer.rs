@@ -54,20 +54,10 @@ pub async fn handler(
     let account_balance_spend = hydra_account_spend_spending_blueprint(&policy_id);
     let internal_transfer_withdraw = hydra_account_withdraw_withdrawal_blueprint(&policy_id);
 
-    // Filter non-lovelace assets
-    let from_non_lovelace_assets: Vec<_> = from_updated_balance
-        .iter()
-        .filter(|asset| !asset.unit().is_empty() && asset.unit() != "lovelace")
-        .collect();
-    let to_non_lovelace_assets: Vec<_> = to_updated_balance
-        .iter()
-        .filter(|asset| !asset.unit().is_empty() && asset.unit() != "lovelace")
-        .collect();
-
     let mut from_unit_tx_index_map: HashMap<String, AssetList> =
-        HashMap::with_capacity(from_non_lovelace_assets.len());
+        HashMap::with_capacity(from_updated_balance.len());
     let mut to_unit_tx_index_map: HashMap<String, AssetList> =
-        HashMap::with_capacity(to_non_lovelace_assets.len());
+        HashMap::with_capacity(to_updated_balance.len());
 
     let mut current_index = 0u32;
 
@@ -125,36 +115,36 @@ pub async fn handler(
     }
 
     let from_account_datum = account_balance_spend.datum(from_account.clone());
-    for asset in from_non_lovelace_assets {
+    for asset in from_updated_balance {
         tx_builder
             .tx_out(
                 account_balance_address,
-                &to_hydra_token(std::slice::from_ref(asset)),
+                &to_hydra_token(std::slice::from_ref(&asset)),
             )
             .tx_out_inline_datum_value(&from_account_datum);
 
         from_unit_tx_index_map.insert(
             current_index.to_string(),
             AssetList {
-                assets: to_proto_amount(std::slice::from_ref(asset)),
+                assets: to_proto_amount(std::slice::from_ref(&asset)),
             },
         );
         current_index += 1;
     }
 
     let to_account_datum = account_balance_spend.datum(to_account.clone());
-    for asset in to_non_lovelace_assets {
+    for asset in to_updated_balance {
         tx_builder
             .tx_out(
                 account_balance_address,
-                &to_hydra_token(std::slice::from_ref(asset)),
+                &to_hydra_token(std::slice::from_ref(&asset)),
             )
             .tx_out_inline_datum_value(&to_account_datum);
 
         to_unit_tx_index_map.insert(
             current_index.to_string(),
             AssetList {
-                assets: to_proto_amount(std::slice::from_ref(asset)),
+                assets: to_proto_amount(std::slice::from_ref(&asset)),
             },
         );
         current_index += 1;
