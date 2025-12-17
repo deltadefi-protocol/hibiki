@@ -64,9 +64,9 @@ pub async fn handler(
         .filter(|asset| !asset.unit().is_empty() && asset.unit() != "lovelace")
         .collect();
 
-    let mut from_unit_tx_index_map: HashMap<u32, AssetList> =
+    let mut from_unit_tx_index_map: HashMap<String, AssetList> =
         HashMap::with_capacity(from_non_lovelace_assets.len());
-    let mut to_unit_tx_index_map: HashMap<u32, AssetList> =
+    let mut to_unit_tx_index_map: HashMap<String, AssetList> =
         HashMap::with_capacity(to_non_lovelace_assets.len());
 
     let mut current_index = 0u32;
@@ -134,7 +134,7 @@ pub async fn handler(
             .tx_out_inline_datum_value(&from_account_datum);
 
         from_unit_tx_index_map.insert(
-            current_index,
+            current_index.to_string(),
             AssetList {
                 assets: to_proto_amount(std::slice::from_ref(asset)),
             },
@@ -152,7 +152,7 @@ pub async fn handler(
             .tx_out_inline_datum_value(&to_account_datum);
 
         to_unit_tx_index_map.insert(
-            current_index,
+            current_index.to_string(),
             AssetList {
                 assets: to_proto_amount(std::slice::from_ref(asset)),
             },

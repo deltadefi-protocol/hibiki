@@ -1,6 +1,6 @@
 use std::sync::OnceLock;
 
-static BLUEPRINT_JSON: &str = include_str!("../../../../deltadefi-scripts/plutus.json");
+static BLUEPRINT_JSON: &str = include_str!("./plutus.json");
 
 pub static BLUEPRINT: OnceLock<Blueprint> = OnceLock::new();
 
