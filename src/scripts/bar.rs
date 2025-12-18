@@ -39,67 +39,6 @@ impl AppConfig {
     }
 }
 
-pub fn app_deposit_withdraw_withdrawal_blueprint(
-    params: &PolicyId,
-) -> WithdrawalBlueprint<PolicyId, ProcessAppDeposit> {
-    let app_config = AppConfig::new();
-    let mut blueprint = WithdrawalBlueprint::new(app_config.plutus_version, app_config.network_id);
-    blueprint
-        .param_script(
-            get_blueprint().validators[1].compiled_code.as_str(),
-            &[&params.to_json_string()],
-            BuilderDataType::JSON,
-        )
-        .unwrap();
-    blueprint
-}
-
-pub fn app_deposit_publish_withdrawal_blueprint(
-    params: &PolicyId,
-) -> WithdrawalBlueprint<PolicyId, PlutusData> {
-    let app_config = AppConfig::new();
-    let mut blueprint = WithdrawalBlueprint::new(app_config.plutus_version, app_config.network_id);
-    blueprint
-        .param_script(
-            get_blueprint().validators[2].compiled_code.as_str(),
-            &[&params.to_json_string()],
-            BuilderDataType::JSON,
-        )
-        .unwrap();
-    blueprint
-}
-
-pub fn app_deposit_request_mint_minting_blueprint(
-    params: &PolicyId,
-) -> MintingBlueprint<PolicyId, MintPolarity> {
-    let app_config = AppConfig::new();
-    let mut blueprint = MintingBlueprint::new(app_config.plutus_version);
-    blueprint
-        .param_script(
-            get_blueprint().validators[4].compiled_code.as_str(),
-            &[&params.to_json_string()],
-            BuilderDataType::JSON,
-        )
-        .unwrap();
-    blueprint
-}
-
-pub fn app_deposit_request_spend_spending_blueprint(
-    params: &PolicyId,
-) -> SpendingBlueprint<PolicyId, AppDepositRequestRedeemer, AppDepositRequestDatum> {
-    let app_config = AppConfig::new();
-    let mut blueprint =
-        SpendingBlueprint::new(app_config.plutus_version, app_config.network_id, None);
-    blueprint
-        .param_script(
-            get_blueprint().validators[6].compiled_code.as_str(),
-            &[&params.to_json_string()],
-            BuilderDataType::JSON,
-        )
-        .unwrap();
-    blueprint
-}
-
 pub fn oracle_nft_mint_minting_blueprint(
     params: OutputReference,
 ) -> MintingBlueprint<OutputReference, MintPolarity> {
@@ -108,126 +47,6 @@ pub fn oracle_nft_mint_minting_blueprint(
     blueprint
         .param_script(
             get_blueprint().validators[8].compiled_code.as_str(),
-            &[&params.to_json_string()],
-            BuilderDataType::JSON,
-        )
-        .unwrap();
-    blueprint
-}
-
-pub fn app_oracle_spend_spending_blueprint(
-) -> SpendingBlueprint<(), AppOracleRedeemer, AppOracleDatum> {
-    let app_config = AppConfig::new();
-    let mut blueprint =
-        SpendingBlueprint::new(app_config.plutus_version, app_config.network_id, None);
-    blueprint
-        .no_param_script(get_blueprint().validators[10].compiled_code.as_str())
-        .unwrap();
-    blueprint
-}
-
-pub fn app_withdrawal_withdraw_withdrawal_blueprint(
-    params: &PolicyId,
-) -> WithdrawalBlueprint<PolicyId, ProcessAppWithdrawalRedeemer> {
-    let app_config = AppConfig::new();
-    let mut blueprint = WithdrawalBlueprint::new(app_config.plutus_version, app_config.network_id);
-    blueprint
-        .param_script(
-            get_blueprint().validators[12].compiled_code.as_str(),
-            &[&params.to_json_string()],
-            BuilderDataType::JSON,
-        )
-        .unwrap();
-    blueprint
-}
-
-pub fn app_withdrawal_publish_withdrawal_blueprint(
-    params: &PolicyId,
-) -> WithdrawalBlueprint<PolicyId, PlutusData> {
-    let app_config = AppConfig::new();
-    let mut blueprint = WithdrawalBlueprint::new(app_config.plutus_version, app_config.network_id);
-    blueprint
-        .param_script(
-            get_blueprint().validators[13].compiled_code.as_str(),
-            &[&params.to_json_string()],
-            BuilderDataType::JSON,
-        )
-        .unwrap();
-    blueprint
-}
-
-pub fn app_vault_spend_spending_blueprint(
-    params: &PolicyId,
-) -> SpendingBlueprint<PolicyId, PlutusData, PlutusData> {
-    let app_config = AppConfig::new();
-    let mut blueprint =
-        SpendingBlueprint::new(app_config.plutus_version, app_config.network_id, None);
-    blueprint
-        .param_script(
-            get_blueprint().validators[15].compiled_code.as_str(),
-            &[&params.to_json_string()],
-            BuilderDataType::JSON,
-        )
-        .unwrap();
-    blueprint
-}
-
-pub fn dex_account_balance_mint_minting_blueprint(
-    params: &PolicyId,
-) -> MintingBlueprint<PolicyId, MintPolarity> {
-    let app_config = AppConfig::new();
-    let mut blueprint = MintingBlueprint::new(app_config.plutus_version);
-    blueprint
-        .param_script(
-            get_blueprint().validators[17].compiled_code.as_str(),
-            &[&params.to_json_string()],
-            BuilderDataType::JSON,
-        )
-        .unwrap();
-    blueprint
-}
-
-pub fn dex_account_balance_spend_spending_blueprint(
-    params: (PolicyId, PolicyId),
-) -> SpendingBlueprint<(PolicyId, PolicyId), DexAccountBalanceRedeemer, DexAccountBalanceDatum> {
-    let app_config = AppConfig::new();
-    let mut blueprint =
-        SpendingBlueprint::new(app_config.plutus_version, app_config.network_id, None);
-    let param_strs: Vec<String> = vec![params.0.to_json_string(), params.1.to_json_string()];
-    let param_refs: Vec<&str> = param_strs.iter().map(|s| s.as_str()).collect();
-    blueprint
-        .param_script(
-            get_blueprint().validators[19].compiled_code.as_str(),
-            &param_refs,
-            BuilderDataType::JSON,
-        )
-        .unwrap();
-    blueprint
-}
-
-pub fn emergency_order_cancel_withdraw_withdrawal_blueprint(
-    params: &PolicyId,
-) -> WithdrawalBlueprint<PolicyId, EmergencyCancelRedeemer> {
-    let app_config = AppConfig::new();
-    let mut blueprint = WithdrawalBlueprint::new(app_config.plutus_version, app_config.network_id);
-    blueprint
-        .param_script(
-            get_blueprint().validators[21].compiled_code.as_str(),
-            &[&params.to_json_string()],
-            BuilderDataType::JSON,
-        )
-        .unwrap();
-    blueprint
-}
-
-pub fn emergency_order_cancel_publish_withdrawal_blueprint(
-    params: &PolicyId,
-) -> WithdrawalBlueprint<PolicyId, PlutusData> {
-    let app_config = AppConfig::new();
-    let mut blueprint = WithdrawalBlueprint::new(app_config.plutus_version, app_config.network_id);
-    blueprint
-        .param_script(
-            get_blueprint().validators[22].compiled_code.as_str(),
             &[&params.to_json_string()],
             BuilderDataType::JSON,
         )
@@ -245,71 +64,8 @@ pub fn dex_order_book_spend_spending_blueprint(
     let param_refs: Vec<&str> = param_strs.iter().map(|s| s.as_str()).collect();
     blueprint
         .param_script(
-            get_blueprint().validators[24].compiled_code.as_str(),
+            get_blueprint().validators[27].compiled_code.as_str(),
             &param_refs,
-            BuilderDataType::JSON,
-        )
-        .unwrap();
-    blueprint
-}
-
-pub fn emergency_cancel_order_request_mint_minting_blueprint(
-    params: &PolicyId,
-) -> MintingBlueprint<PolicyId, MintPolarity> {
-    let app_config = AppConfig::new();
-    let mut blueprint = MintingBlueprint::new(app_config.plutus_version);
-    blueprint
-        .param_script(
-            get_blueprint().validators[26].compiled_code.as_str(),
-            &[&params.to_json_string()],
-            BuilderDataType::JSON,
-        )
-        .unwrap();
-    blueprint
-}
-
-pub fn emergency_cancel_order_request_spend_spending_blueprint(
-    params: &PolicyId,
-) -> SpendingBlueprint<PolicyId, EmergencyCancelRequestRedeemer, EmergencyCancelRequestDatum> {
-    let app_config = AppConfig::new();
-    let mut blueprint =
-        SpendingBlueprint::new(app_config.plutus_version, app_config.network_id, None);
-    blueprint
-        .param_script(
-            get_blueprint().validators[28].compiled_code.as_str(),
-            &[&params.to_json_string()],
-            BuilderDataType::JSON,
-        )
-        .unwrap();
-    blueprint
-}
-
-pub fn emergency_withdrawal_request_mint_minting_blueprint(
-    params: &PolicyId,
-) -> MintingBlueprint<PolicyId, MintPolarity> {
-    let app_config = AppConfig::new();
-    let mut blueprint = MintingBlueprint::new(app_config.plutus_version);
-    blueprint
-        .param_script(
-            get_blueprint().validators[30].compiled_code.as_str(),
-            &[&params.to_json_string()],
-            BuilderDataType::JSON,
-        )
-        .unwrap();
-    blueprint
-}
-
-pub fn emergency_withdrawal_request_spend_spending_blueprint(
-    params: &PolicyId,
-) -> SpendingBlueprint<PolicyId, EmergencyWithdrawalRequestRedeemer, EmergencyWithdrawalRequestDatum>
-{
-    let app_config = AppConfig::new();
-    let mut blueprint =
-        SpendingBlueprint::new(app_config.plutus_version, app_config.network_id, None);
-    blueprint
-        .param_script(
-            get_blueprint().validators[32].compiled_code.as_str(),
-            &[&params.to_json_string()],
             BuilderDataType::JSON,
         )
         .unwrap();
@@ -324,7 +80,7 @@ pub fn hydra_account_spend_spending_blueprint(
         SpendingBlueprint::new(app_config.plutus_version, app_config.network_id, None);
     blueprint
         .param_script(
-            get_blueprint().validators[34].compiled_code.as_str(),
+            get_blueprint().validators[37].compiled_code.as_str(),
             &[&params.to_json_string()],
             BuilderDataType::JSON,
         )
@@ -339,7 +95,7 @@ pub fn hydra_account_withdraw_withdrawal_blueprint(
     let mut blueprint = WithdrawalBlueprint::new(app_config.plutus_version, app_config.network_id);
     blueprint
         .param_script(
-            get_blueprint().validators[35].compiled_code.as_str(),
+            get_blueprint().validators[38].compiled_code.as_str(),
             &[&params.to_json_string()],
             BuilderDataType::JSON,
         )
@@ -355,7 +111,7 @@ pub fn hydra_order_book_spend_spending_blueprint(
         SpendingBlueprint::new(app_config.plutus_version, app_config.network_id, None);
     blueprint
         .param_script(
-            get_blueprint().validators[37].compiled_code.as_str(),
+            get_blueprint().validators[40].compiled_code.as_str(),
             &[&params.to_json_string()],
             BuilderDataType::JSON,
         )
@@ -370,7 +126,7 @@ pub fn hydra_order_book_withdraw_withdrawal_blueprint(
     let mut blueprint = WithdrawalBlueprint::new(app_config.plutus_version, app_config.network_id);
     blueprint
         .param_script(
-            get_blueprint().validators[38].compiled_code.as_str(),
+            get_blueprint().validators[41].compiled_code.as_str(),
             &[&params.to_json_string()],
             BuilderDataType::JSON,
         )
@@ -385,7 +141,7 @@ pub fn hydra_order_book_publish_withdrawal_blueprint(
     let mut blueprint = WithdrawalBlueprint::new(app_config.plutus_version, app_config.network_id);
     blueprint
         .param_script(
-            get_blueprint().validators[39].compiled_code.as_str(),
+            get_blueprint().validators[42].compiled_code.as_str(),
             &[&params.to_json_string()],
             BuilderDataType::JSON,
         )
@@ -400,7 +156,7 @@ pub fn hydra_tokens_mint_minting_blueprint(
     let mut blueprint = MintingBlueprint::new(app_config.plutus_version);
     blueprint
         .param_script(
-            get_blueprint().validators[41].compiled_code.as_str(),
+            get_blueprint().validators[44].compiled_code.as_str(),
             &[&params.to_json_string()],
             BuilderDataType::JSON,
         )
@@ -416,7 +172,7 @@ pub fn hydra_user_intent_spend_spending_blueprint(
         SpendingBlueprint::new(app_config.plutus_version, app_config.network_id, None);
     blueprint
         .param_script(
-            get_blueprint().validators[43].compiled_code.as_str(),
+            get_blueprint().validators[46].compiled_code.as_str(),
             &[&params.to_json_string()],
             BuilderDataType::JSON,
         )
@@ -431,7 +187,7 @@ pub fn hydra_user_intent_mint_minting_blueprint(
     let mut blueprint = MintingBlueprint::new(app_config.plutus_version);
     blueprint
         .param_script(
-            get_blueprint().validators[44].compiled_code.as_str(),
+            get_blueprint().validators[47].compiled_code.as_str(),
             &[&params.to_json_string()],
             BuilderDataType::JSON,
         )
@@ -836,7 +592,7 @@ pub enum HydraUserIntentDatum {
 pub struct TradeIntent(pub Constr0<Box<(UserAccount, PlutusData)>>);
 
 #[derive(Clone, Debug, ImplConstr)]
-pub struct MasterIntent(pub Constr1<Box<(UserAccount, HydraAccountIntent)>>);
+pub struct MasterIntent(pub Constr1<Box<(UserTradeAccount, TransferIntent)>>);
 
 #[derive(Debug, Clone, ConstrEnum)]
 pub enum HydraUserIntentRedeemer {
@@ -849,7 +605,7 @@ pub enum HydraUserIntentRedeemer {
 pub struct MintTradeIntent(pub Constr0<Box<(UserAccount, PlutusData)>>);
 
 #[derive(Clone, Debug, ImplConstr)]
-pub struct MintMasterIntent(pub Constr1<Box<(UserAccount, HydraAccountIntent)>>);
+pub struct MintMasterIntent(pub Constr1<Box<(UserTradeAccount, TransferIntent)>>);
 
 pub type BurnIntent = Constr2<()>;
 
@@ -867,4 +623,4 @@ pub struct WithdrawalIntent(pub Constr0<MValue>);
 pub struct CancelWithdrawalIntent(pub Constr1<MValue>);
 
 #[derive(Clone, Debug, ImplConstr)]
-pub struct TransferIntent(pub Constr2<Box<(UserAccount, MValue)>>);
+pub struct TransferIntent(pub Constr2<Box<(UserTradeAccount, MValue)>>);

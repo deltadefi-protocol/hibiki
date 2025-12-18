@@ -3,12 +3,8 @@ use whisky::data::{ByteString, Constr0, Constr1, Constr2, Credential, PolicyId, 
 use crate::{
     constant::{dex_oracle_nft, SCRIPTS},
     scripts::{
-        bar::{
-            Account, CancelWithdrawalIntent, HydraAccountIntent, HydraOrderBookRedeemer,
-            HydraUserIntentRedeemer, MValue, MintMasterIntent, TransferIntent, UserAccount,
-            UserFundingAccount, UserMobileAccount, UserTradeAccount, WithdrawalIntent,
-        },
-        MasterIntent,
+        bar::{Account, MintMasterIntent, TransferIntent, UserTradeAccount},
+        MValue, MasterIntent,
     },
 };
 
@@ -30,30 +26,6 @@ impl Account {
 }
 
 impl UserTradeAccount {
-    pub fn new_from_account<P>(
-        account: Account,
-        hydra_order_book_withdrawal_blueprint: fn(
-            PolicyId,
-        ) -> whisky::WithdrawalBlueprint<
-            P,
-            HydraOrderBookRedeemer,
-        >,
-    ) -> UserAccount
-    where
-        P: whisky::data::PlutusDataJson,
-    {
-        let policy_id = PolicyId::new(dex_oracle_nft());
-        let blueprint = hydra_order_book_withdrawal_blueprint(policy_id);
-        let script_hash = ScriptHash::new(&blueprint.hash);
-
-        UserAccount::UserTradeAccount(UserTradeAccount(Constr0::new(Box::new((
-            account,
-            script_hash,
-        )))))
-    }
-}
-
-impl UserAccount {
     pub fn from_proto(account_info: &hibiki_proto::services::AccountInfo) -> Self {
         let clean_account_id = account_info.account_id.replace("-", "");
 
@@ -71,62 +43,26 @@ impl UserAccount {
         let script_hash = ScriptHash::new(&blueprint.hash);
 
         match account_info.account_type.as_str() {
-            "spot_account" => UserAccount::UserTradeAccount(UserTradeAccount(Constr0::new(
-                Box::new((account, script_hash)),
-            ))),
-            "funding_account" => UserAccount::UserFundingAccount(UserFundingAccount(Constr1::new(
-                Box::new((account, script_hash)),
-            ))),
-            "mobile_account" => UserAccount::UserMobileAccount(UserMobileAccount(Constr2::new(
-                Box::new((account, script_hash)),
-            ))),
+            "spot_account" => UserTradeAccount(Constr0::new(Box::new((account, script_hash)))),
             _ => panic!("Unknown account type: {}", account_info.account_type),
         }
     }
 }
 
-impl WithdrawalIntent {
-    pub fn new(value: MValue) -> HydraAccountIntent {
-        HydraAccountIntent::WithdrawalIntent(WithdrawalIntent(Constr0::new(value)))
-    }
-}
-
-impl CancelWithdrawalIntent {
-    pub fn new(value: MValue) -> HydraAccountIntent {
-        HydraAccountIntent::CancelWithdrawalIntent(CancelWithdrawalIntent(Constr1::new(value)))
-    }
-}
-
 impl TransferIntent {
-    pub fn new(account: UserAccount, value: MValue) -> HydraAccountIntent {
-        HydraAccountIntent::TransferIntent(TransferIntent(Constr2::new(Box::new((account, value)))))
-    }
-}
-
-impl HydraAccountIntent {
-    pub fn withdrawal(value: MValue) -> Self {
-        WithdrawalIntent::new(value)
-    }
-
-    pub fn cancel_withdrawal(value: MValue) -> Self {
-        CancelWithdrawalIntent::new(value)
-    }
-
-    pub fn transfer(account: UserAccount, value: MValue) -> Self {
-        TransferIntent::new(account, value)
+    pub fn new(account: UserTradeAccount, value: MValue) -> TransferIntent {
+        TransferIntent(Constr2::new(Box::new((account, value))))
     }
 }
 
 impl MintMasterIntent {
-    pub fn new(account: UserAccount, intent: HydraAccountIntent) -> HydraUserIntentRedeemer {
-        HydraUserIntentRedeemer::MintMasterIntent(MintMasterIntent(Constr1::new(Box::new((
-            account, intent,
-        )))))
+    pub fn new(account: UserTradeAccount, intent: TransferIntent) -> MintMasterIntent {
+        MintMasterIntent(Constr1::new(Box::new((account, intent))))
     }
 }
 
 impl MasterIntent {
-    pub fn new(account: UserAccount, intent: HydraAccountIntent) -> MasterIntent {
+    pub fn new(account: UserTradeAccount, intent: TransferIntent) -> MasterIntent {
         MasterIntent(Constr1::new(Box::new((account, intent))))
     }
 }
