@@ -1,22 +1,29 @@
-use hibiki_proto::services::{ProcessTransferRequest, ProcessTransferResponse};
+use hibiki_proto::services::{
+    AssetList, ProcessTransferRequest, ProcessTransferResponse, UnitTxIndexMap,
+};
+use std::collections::HashMap;
 use whisky::{
     calculate_tx_hash,
-    data::{Constr0, Value},
-    Budget, WError, WRedeemer, Wallet,
+    data::{Constr, List, PlutusData, PlutusDataJson},
+    Budget, UTxO, UtxoInput, UtxoOutput, WData, WError, WRedeemer, Wallet,
 };
 
 use crate::{
     config::AppConfig,
+    constant::{all_hydra_to_l1_token_map, dex_oracle_nft, l2_ref_scripts_index},
     handler::sign_transaction::check_signature_sign_tx,
     scripts::{
-        hydra_account_balance_spending_blueprint, hydra_internal_transfer_blueprint,
-        hydra_user_intent_minting_blueprint, hydra_user_intent_spending_blueprint,
-        HydraAccountBalanceDatum, HydraAccountBalanceRedeemer, HydraUserIntentRedeemer,
-        UserAccount,
+        hydra_account_spend_spending_blueprint, hydra_account_withdraw_withdrawal_blueprint,
+        hydra_user_intent_mint_minting_blueprint, hydra_user_intent_spend_spending_blueprint,
+        HydraAccountOperation, HydraAccountRedeemer, HydraUserIntentRedeemer, UserTradeAccount,
     },
     utils::{
-        hydra::get_hydra_tx_builder,
-        proto::{from_proto_balance_utxo, from_proto_utxo},
+        hydra::{get_hydra_tx_builder, get_script_ref_hex},
+        proto::{
+            extract_transfer_amount_from_intent, from_proto_balance_utxos, from_proto_utxo,
+            to_proto_amount,
+        },
+        token::{to_hydra_token, to_l1_assets},
     },
 };
 
@@ -26,20 +33,99 @@ pub async fn handler(
 ) -> Result<ProcessTransferResponse, WError> {
     let AppConfig { app_owner_vkey, .. } = AppConfig::new();
 
-    let colleteral = from_proto_utxo(request.collateral_utxo.as_ref().unwrap());
+    let collateral = from_proto_utxo(request.collateral_utxo.as_ref().unwrap());
     let ref_input = from_proto_utxo(request.dex_order_book_utxo.as_ref().unwrap());
     let intent_utxo = from_proto_utxo(request.transferral_intent_utxo.as_ref().unwrap());
-    let from_account = UserAccount::from_proto(request.account.as_ref().unwrap());
-    let to_account = UserAccount::from_proto(request.receiver_account.as_ref().unwrap());
-    let (from_updated_balance, from_account_utxo) =
-        from_proto_balance_utxo(request.account_balance_utxo.as_ref().unwrap());
-    let (to_updated_balance, to_account_utxo) =
-        from_proto_balance_utxo(request.receiver_account_balance_utxo.as_ref().unwrap());
+    let from_account = UserTradeAccount::from_proto(request.account.as_ref().unwrap());
+    let to_account = UserTradeAccount::from_proto(request.receiver_account.as_ref().unwrap());
 
-    let user_intent_mint = hydra_user_intent_minting_blueprint();
-    let user_intent_spend = hydra_user_intent_spending_blueprint();
-    let account_balance_spend = hydra_account_balance_spending_blueprint();
-    let internal_transfer_withdraw = hydra_internal_transfer_blueprint();
+    // Parse sender's balance UTXOs
+    let (from_updated_balance_l1, from_account_utxos) =
+        from_proto_balance_utxos(request.account_balance_utxos.as_ref().unwrap());
+
+    let to_updated_balance_l2 = extract_transfer_amount_from_intent(&intent_utxo)?;
+
+    // For outputs, we need one UTXO address - use the first sender's UTXO address as template
+    let account_balance_address = &from_account_utxos[0].output.address;
+
+    let policy_id = whisky::data::PolicyId::new(dex_oracle_nft());
+    let user_intent_mint = hydra_user_intent_mint_minting_blueprint(&policy_id);
+    let user_intent_spend = hydra_user_intent_spend_spending_blueprint(&policy_id);
+    let account_balance_spend = hydra_account_spend_spending_blueprint(&policy_id);
+    let internal_transfer_withdraw = hydra_account_withdraw_withdrawal_blueprint(&policy_id);
+
+    let mut from_unit_tx_index_map: HashMap<String, AssetList> =
+        HashMap::with_capacity(from_updated_balance_l1.len());
+    let mut to_unit_tx_index_map: HashMap<String, AssetList> =
+        HashMap::with_capacity(to_updated_balance_l2.len());
+
+    let mut current_index = 0u32;
+
+    let intent_mint_script_ref_hex = Some(get_script_ref_hex(&user_intent_mint.cbor)?);
+    let intent_mint_ref_utxo = UTxO {
+        input: UtxoInput {
+            output_index: l2_ref_scripts_index::hydra_user_intent::MINT,
+            tx_hash: collateral.input.tx_hash.clone(),
+        },
+        output: UtxoOutput {
+            address: collateral.output.address.clone(),
+            amount: Vec::new(),
+            data_hash: None,
+            plutus_data: None,
+            script_ref: intent_mint_script_ref_hex,
+            script_hash: Some(user_intent_mint.hash.clone()),
+        },
+    };
+
+    let intent_spend_script_ref_hex = Some(get_script_ref_hex(&user_intent_spend.cbor)?);
+    let intent_spend_ref_utxo = UTxO {
+        input: UtxoInput {
+            output_index: l2_ref_scripts_index::hydra_user_intent::SPEND,
+            tx_hash: collateral.input.tx_hash.clone(),
+        },
+        output: UtxoOutput {
+            address: collateral.output.address.clone(),
+            amount: Vec::new(),
+            data_hash: None,
+            plutus_data: None,
+            script_ref: intent_spend_script_ref_hex,
+            script_hash: Some(user_intent_mint.hash.clone()),
+        },
+    };
+
+    let account_balance_spend_script_ref_hex =
+        Some(get_script_ref_hex(&account_balance_spend.cbor)?);
+    let account_balance_spend_ref_utxo = UTxO {
+        input: UtxoInput {
+            output_index: l2_ref_scripts_index::hydra_account_balance::SPEND,
+            tx_hash: collateral.input.tx_hash.clone(),
+        },
+        output: UtxoOutput {
+            address: collateral.output.address.clone(),
+            amount: Vec::new(),
+            data_hash: None,
+            plutus_data: None,
+            script_ref: account_balance_spend_script_ref_hex,
+            script_hash: Some(user_intent_mint.hash.clone()),
+        },
+    };
+
+    let account_balance_withdrawal_script_ref_hex =
+        Some(get_script_ref_hex(&account_balance_spend.cbor)?);
+    let account_balance_withdrawal_ref_utxo = UTxO {
+        input: UtxoInput {
+            output_index: l2_ref_scripts_index::hydra_account_balance::WITHDRAWAL,
+            tx_hash: collateral.input.tx_hash.clone(),
+        },
+        output: UtxoOutput {
+            address: collateral.output.address.clone(),
+            amount: Vec::new(),
+            data_hash: None,
+            plutus_data: None,
+            script_ref: account_balance_withdrawal_script_ref_hex,
+            script_hash: Some(user_intent_mint.hash.clone()),
+        },
+    };
 
     let mut tx_builder = get_hydra_tx_builder();
     tx_builder
@@ -56,86 +142,115 @@ pub async fn handler(
         )
         .tx_in_inline_datum_present()
         .tx_in_redeemer_value(&WRedeemer {
-            data: user_intent_spend.redeemer(Constr0::new(())),
+            data: user_intent_spend.redeemer(PlutusData::Constr(Constr::new(
+                1,
+                Box::new(PlutusData::List(List::new(&[]))),
+            ))),
             ex_units: Budget::default(),
         })
-        .tx_in_script(&user_intent_spend.cbor)
+        .spending_tx_in_reference(
+            collateral.input.tx_hash.as_str(),
+            l2_ref_scripts_index::hydra_user_intent::SPEND,
+            &user_intent_mint.hash,
+            user_intent_mint.cbor.len() / 2,
+        )
+        .input_for_evaluation(&intent_spend_ref_utxo)
         .input_for_evaluation(&intent_utxo)
-        // update account balance utxo
-        .spending_plutus_script_v3()
-        .tx_in(
-            &from_account_utxo.input.tx_hash,
-            from_account_utxo.input.output_index,
-            &from_account_utxo.output.amount,
-            &from_account_utxo.output.address,
-        )
-        .tx_in_inline_datum_present()
-        .tx_in_redeemer_value(&WRedeemer {
-            data: account_balance_spend
-                .redeemer(HydraAccountBalanceRedeemer::UpdateBalanceWithTransfer),
-            ex_units: Budget::default(),
-        })
-        .tx_in_script(&user_intent_spend.cbor)
-        .input_for_evaluation(&from_account_utxo)
-        .tx_out(
-            &from_account_utxo.output.address,
-            &from_account_utxo.output.amount,
-        )
-        .tx_out_inline_datum_value(
-            &account_balance_spend.datum(HydraAccountBalanceDatum::Datum(
-                from_account,
-                Value::from_asset_vec(&from_updated_balance),
-            )),
-        )
-        // update receiver account balance utxo
-        .spending_plutus_script_v3()
-        .tx_in(
-            &to_account_utxo.input.tx_hash,
-            to_account_utxo.input.output_index,
-            &to_account_utxo.output.amount,
-            &to_account_utxo.output.address,
-        )
-        .tx_in_inline_datum_present()
-        .tx_in_redeemer_value(&WRedeemer {
-            data: account_balance_spend
-                .redeemer(HydraAccountBalanceRedeemer::UpdateBalanceWithTransfer),
-            ex_units: Budget::default(),
-        })
-        .tx_in_script(&account_balance_spend.cbor)
-        .input_for_evaluation(&to_account_utxo)
-        .tx_out(
-            &to_account_utxo.output.address,
-            &to_account_utxo.output.amount,
-        )
-        .tx_out_inline_datum_value(
-            &account_balance_spend.datum(HydraAccountBalanceDatum::Datum(
-                to_account,
-                Value::from_asset_vec(&to_updated_balance),
-            )),
-        )
+        .input_for_evaluation(&account_balance_spend_ref_utxo);
+
+    // Spend all sender's account balance UTXOs
+    for from_utxo in &from_account_utxos {
+        tx_builder
+            .spending_plutus_script_v3()
+            .tx_in(
+                &from_utxo.input.tx_hash,
+                from_utxo.input.output_index,
+                &from_utxo.output.amount,
+                &from_utxo.output.address,
+            )
+            .tx_in_inline_datum_present()
+            .tx_in_redeemer_value(&WRedeemer {
+                data: account_balance_spend.redeemer(HydraAccountRedeemer::HydraAccountOperate),
+                ex_units: Budget::default(),
+            })
+            .spending_tx_in_reference(
+                collateral.input.tx_hash.as_str(),
+                l2_ref_scripts_index::hydra_account_balance::SPEND,
+                &account_balance_spend.hash,
+                account_balance_spend.cbor.len() / 2,
+            )
+            .input_for_evaluation(&from_utxo);
+    }
+
+    for asset in from_updated_balance_l1 {
+        tx_builder
+            .tx_out(
+                account_balance_address,
+                &to_hydra_token(std::slice::from_ref(&asset)),
+            )
+            .tx_out_inline_datum_value(&WData::JSON(from_account.to_json_string()));
+
+        from_unit_tx_index_map.insert(
+            current_index.to_string(),
+            AssetList {
+                assets: to_proto_amount(std::slice::from_ref(&asset)),
+            },
+        );
+        current_index += 1;
+    }
+
+    for asset in to_updated_balance_l2 {
+        tx_builder
+            .tx_out(account_balance_address, std::slice::from_ref(&asset))
+            .tx_out_inline_datum_value(&WData::JSON(to_account.to_json_string()));
+
+        let l1_assets = to_l1_assets(std::slice::from_ref(&asset), all_hydra_to_l1_token_map())
+            .map_err(WError::from_err("to_l1_assets"))?;
+
+        to_unit_tx_index_map.insert(
+            current_index.to_string(),
+            AssetList {
+                assets: to_proto_amount(&l1_assets),
+            },
+        );
+        current_index += 1;
+    }
+
+    tx_builder
         .mint_plutus_script_v3()
         .mint(-1, &user_intent_mint.hash, "")
         .mint_redeemer_value(&WRedeemer {
-            data: user_intent_mint.redeemer(HydraUserIntentRedeemer::HydraUserTransfer),
+            data: user_intent_mint.redeemer(HydraUserIntentRedeemer::BurnIntent),
             ex_units: Budget::default(),
         })
-        .minting_script(&user_intent_mint.cbor)
+        .mint_tx_in_reference(
+            &collateral.input.tx_hash,
+            l2_ref_scripts_index::hydra_user_intent::MINT,
+            &user_intent_mint.hash,
+            user_intent_mint.cbor.len() / 2,
+        )
+        .input_for_evaluation(&intent_mint_ref_utxo)
         // withdrawal logic
         .withdrawal_plutus_script_v3()
         .withdrawal(&internal_transfer_withdraw.address, 0)
         .withdrawal_redeemer_value(&WRedeemer {
-            data: user_intent_spend.redeemer(Constr0::new(())),
+            data: internal_transfer_withdraw.redeemer(HydraAccountOperation::ProcessTransferal),
             ex_units: Budget::default(),
         })
-        .withdrawal_script(&internal_transfer_withdraw.cbor)
-        // common
-        .tx_in_collateral(
-            &colleteral.input.tx_hash,
-            colleteral.input.output_index,
-            &colleteral.output.amount,
-            &colleteral.output.address,
+        .withdrawal_tx_in_reference(
+            &collateral.input.tx_hash,
+            l2_ref_scripts_index::hydra_account_balance::WITHDRAWAL,
+            &internal_transfer_withdraw.hash,
+            internal_transfer_withdraw.cbor.len() / 2,
         )
-        .input_for_evaluation(&colleteral)
+        .input_for_evaluation(&account_balance_withdrawal_ref_utxo)
+        .tx_in_collateral(
+            &collateral.input.tx_hash,
+            collateral.input.output_index,
+            &collateral.output.amount,
+            &collateral.output.address,
+        )
+        .input_for_evaluation(&collateral)
         .change_address(&request.address)
         .required_signer_hash(&app_owner_vkey)
         .complete(None)
@@ -148,178 +263,195 @@ pub async fn handler(
     Ok(ProcessTransferResponse {
         signed_tx,
         tx_hash,
-        account_utxo_tx_index: 0,
-        receiver_account_utxo_tx_index: 1,
+        account_utxo_tx_index_unit_map: if from_unit_tx_index_map.is_empty() {
+            None
+        } else {
+            Some(UnitTxIndexMap {
+                unit_tx_index_map: from_unit_tx_index_map,
+            })
+        },
+        receiver_account_utxo_tx_index_unit_map: if to_unit_tx_index_map.is_empty() {
+            None
+        } else {
+            Some(UnitTxIndexMap {
+                unit_tx_index_map: to_unit_tx_index_map,
+            })
+        },
     })
 }
 
-// todo: update dexOrderBook datum tests
-// #[cfg(test)]
-// mod tests {
-//     use crate::utils::wallet::get_app_owner_wallet;
+#[cfg(test)]
+mod active_tests {
+    use crate::utils::wallet::get_app_owner_wallet;
 
-//     use super::*;
-//     use dotenv::dotenv;
-//     use hibiki_proto::services::{AccountInfo, Asset, UTxO, UtxoInput, UtxoOutput};
-//     use hibiki_proto::services::{BalanceUtxo, ProcessTransferRequest};
+    use super::*;
+    use dotenv::dotenv;
+    use hibiki_proto::services::{AccountInfo, Asset, UTxO, UtxoInput, UtxoOutput};
+    use hibiki_proto::services::{BalanceUtxos, ProcessTransferRequest};
 
-//     #[tokio::test]
-//     async fn test_process_transfer() {
-//         dotenv().ok();
-//         let request = ProcessTransferRequest {
-//             account: Some(AccountInfo {
-//                 account_id: "6238ab50-164a-444f-8f99-1c44c93e998f".to_string(),
-//                 account_type: "spot_account".to_string(),
-//                 master_key: "04845038ee499ee8bc0afe56f688f27b2dd76f230d3698a9afcc1b66".to_string(),
-//                 is_script_master_key: false,
-//                 operation_key: "1d585b0cc5ae93d6c65bc72773ca5f77855f1e658e969c70f0fb3cd4".to_string(),
-//                 is_script_operation_key: false
-//             }),
-//             receiver_account: Some(AccountInfo {
-//                 account_id: "b897f81c-68ca-41aa-a8df-438fa7e0ee57".to_string(),
-//                 account_type: "spot_account".to_string(),
-//                 master_key: "948624fda9524c4e8531e40371afa4e4a326f005da065b43312f7ceb".to_string(),
-//                 is_script_master_key: false,
-//                 operation_key: "a59998c27b9bb8534a7948c67421c16331d4115ae7f965bb660c405b".to_string(),
-//                 is_script_operation_key: false
-//             }),
-//             account_balance_utxo: Some(BalanceUtxo {
-//                 utxo: Some(UTxO {
-//                     input: Some(UtxoInput {
-//                         output_index: 2,
-//                         tx_hash: "0f6569f7fa0419c170d32b5a4cb98204970b069f64d1c7cbb4935e0b438f4011".to_string()
-//                     }),
-//                     output: Some(UtxoOutput {
-//                         address: "addr_test1wqf33csat6cwhylj8fxe55je9k6ym4ywju07dh534rq5qug84wcud".to_string(),
-//                         amount: vec![
-//                             Asset {
-//                                 unit: "lovelace".to_string(),
-//                                 quantity: "0".to_string()
-//                             },
-//                             Asset {
-//                                 unit: "c828db378a1b202822e9de2a6d461af04b016768bce986176af87ba5".to_string(),
-//                                 quantity: "1".to_string()
-//                             }
-//                         ],
-//                         data_hash: "6af47713a4b3b285bbb078d7877c918fe4351da95ecc024e09e71df59a641e6a".to_string(),
-//                         plutus_data: "d8799fd8799fd8799f506238ab50164a444f8f991c44c93e998fd8799f581c04845038ee499ee8bc0afe56f688f27b2dd76f230d3698a9afcc1b66ffd8799f581c1d585b0cc5ae93d6c65bc72773ca5f77855f1e658e969c70f0fb3cd4ffffffa240a1401a00989680581c5066154a102ee037390c5236f78db23239b49c5748d3d349f3ccf04ba144555344581a00989680ff".to_string(),
-//                         script_ref: "".to_string(),
-//                         script_hash: "".to_string()
-//                     })
-//                 }),
-//                 updated_balance: vec![
-//                     Asset {
-//                         unit: "lovelace".to_string(),
-//                         quantity: "9000000".to_string()
-//                     },
-//                     Asset {
-//                         unit: "5066154a102ee037390c5236f78db23239b49c5748d3d349f3ccf04b55534458".to_string(),
-//                         quantity: "10000000".to_string()
-//                     }
-//                 ]
-//             }),
-//             receiver_account_balance_utxo: Some(BalanceUtxo {
-//                 utxo: Some(UTxO {
-//                     input: Some(UtxoInput {
-//                         output_index: 0,
-//                         tx_hash: "7c444ed8836d7047d5e41e15912777f756633208b0c890cd75ad29b4c3287f23".to_string()
-//                     }),
-//                     output: Some(UtxoOutput {
-//                         address: "addr_test1wqf33csat6cwhylj8fxe55je9k6ym4ywju07dh534rq5qug84wcud".to_string(),
-//                         amount: vec![
-//                             Asset {
-//                                 unit: "lovelace".to_string(),
-//                                 quantity: "0".to_string()
-//                             },
-//                             Asset {
-//                                 unit: "c828db378a1b202822e9de2a6d461af04b016768bce986176af87ba5".to_string(),
-//                                 quantity: "1".to_string()
-//                             }
-//                         ],
-//                         data_hash: "7ecc7913eed31c8dcc31a6c69be81cee1f3d8b2b92c6fe65d29893462ca64bee".to_string(),
-//                         plutus_data: "d8799fd8799fd8799f50b897f81c68ca41aaa8df438fa7e0ee57d8799f581c948624fda9524c4e8531e40371afa4e4a326f005da065b43312f7cebffd8799f581ca59998c27b9bb8534a7948c67421c16331d4115ae7f965bb660c405bffffffa0ff".to_string(),
-//                         script_ref: "".to_string(),
-//                         script_hash: "".to_string()
-//                     })
-//                 }),
-//                 updated_balance: vec![
-//                     Asset {
-//                         unit: "lovelace".to_string(),
-//                         quantity: "1000000".to_string()
-//                     }
-//                 ]
-//             }),
-//             transferral_intent_utxo: Some(UTxO {
-//                 input: Some(UtxoInput {
-//                     output_index: 0,
-//                     tx_hash: "b9599f3bfa626542f5520715d507f78c57d9f0fe6928416d27d067426241d741".to_string()
-//                 }),
-//                 output: Some(UtxoOutput {
-//                     address: "addr_test1wqf33csat6cwhylj8fxe55je9k6ym4ywju07dh534rq5qug84wcud".to_string(),
-//                     amount: vec![
-//                         Asset {
-//                             unit: "lovelace".to_string(),
-//                             quantity: "0".to_string()
-//                         },
-//                         Asset {
-//                             unit: "463e70d04718e253757523698184cb7090b0430e89dc025c4c8e392c".to_string(),
-//                             quantity: "1".to_string()
-//                         }
-//                     ],
-//                     data_hash: "40c19dfbf2514c3b93e1d60bbfe03b70e617b0b7976170757d957e7c1f9a84eb".to_string(),
-//                     plutus_data: "d87c9fd8799fd8799f506238ab50164a444f8f991c44c93e998fd8799f581c04845038ee499ee8bc0afe56f688f27b2dd76f230d3698a9afcc1b66ffd8799f581c1d585b0cc5ae93d6c65bc72773ca5f77855f1e658e969c70f0fb3cd4ffffffd8799fd8799f50b897f81c68ca41aaa8df438fa7e0ee57d8799f581c948624fda9524c4e8531e40371afa4e4a326f005da065b43312f7cebffd8799f581ca59998c27b9bb8534a7948c67421c16331d4115ae7f965bb660c405bffffffa140a1401a000f4240ff".to_string(),
-//                     script_ref: "".to_string(),
-//                     script_hash: "".to_string()
-//                 })
-//             }),
-//             address: "addr_test1qqzgg5pcaeyea69uptl9da5g7fajm4m0yvxndx9f4lxpkehqgezy0s04rtdwlc0tlvxafpdrfxnsg7ww68ge3j7l0lnszsw2wt".to_string(),
-//             collateral_utxo: Some(UTxO {
-//                 input: Some(UtxoInput {
-//                     output_index: 1000,
-//                     tx_hash: "df50c3d4b115012ca00bb163f0492b1b67e53ac0117bfa86cc9e54cc24770787".to_string()
-//                 }),
-//                 output: Some(UtxoOutput {
-//                     address: "addr_test1vra9zdhfa8kteyr3mfe7adkf5nlh8jl5xcg9e7pcp5w9yhq5exvwh".to_string(),
-//                     amount: vec![
-//                         Asset {
-//                             unit: "lovelace".to_string(),
-//                             quantity: "10000000".to_string()
-//                         }
-//                     ],
-//                     data_hash: "".to_string(),
-//                     plutus_data: "".to_string(),
-//                     script_ref: "".to_string(),
-//                     script_hash: "".to_string()
-//                 })
-//             }),
-//             dex_order_book_utxo: Some(UTxO {
-//                 input: Some(UtxoInput {
-//                     output_index: 0,
-//                     tx_hash: "f5e3e101088e67685668587aae88a527586bdece2e69a1c683b4c1d8201e07d6".to_string()
-//                 }),
-//                 output: Some(UtxoOutput {
-//                     address: "addr_test1wq80wduvwq4s99cqyn0ra7qdpds7gatmxhun8vterp957zse5cnq7".to_string(),
-//                     amount: vec![
-//                         Asset {
-//                             unit: "lovelace".to_string(),
-//                             quantity: "6000000".to_string()
-//                         },
-//                         Asset {
-//                             unit: "0ae6fc26bbcb00cf8039777488a6b2c2c8ec44b8a16e48b11056e3a3".to_string(),
-//                             quantity: "1".to_string()
-//                         }
-//                     ],
-//                     data_hash: "2026506915b0afdef9723673b5ca604f5b7b700f75635f8c6869a8af2b471ed5".to_string(),
-//                     plutus_data: "d8799f581cfa5136e9e9ecbc9071da73eeb6c9a4ff73cbf436105cf8380d1c525c581cbc2a083f306397a56661f0d999be07faeb39b792ae97ece7736ef2c3d8799fd8799f506238ab50164a444f8f991c44c93e998fd8799f581c04845038ee499ee8bc0afe56f688f27b2dd76f230d3698a9afcc1b66ffd8799f581c1d585b0cc5ae93d6c65bc72773ca5f77855f1e658e969c70f0fb3cd4ffffff58200000000000000000000000000000000000000000000000000000000000000000581c618b0aca12eac0ff0dc5886503bf347471908b168a90b0e25692caa4d8799fd87a9f581c2cacd4b1e8d4788e46747e454a7f42978289de7f9ccb5812b1089c87ffd87a80ff581c6cd00ea1f6c2e96d20fc6beda30db317b8a972e12f97c8c80032b718d8799fd87a9f581c0c6a291cd4d28f5cec51e5ef7b504ce5476b19f7c97a75ac3e1a5be4ffd87a80ff581c0ae6fc26bbcb00cf8039777488a6b2c2c8ec44b8a16e48b11056e3a3d8799fd87a9f581c0ef7378c702b02970024de3ef80d0b61e4757b35f933b179184b4f0affd87a80ff581c463e70d04718e253757523698184cb7090b0430e89dc025c4c8e392cd8799fd87a9f581ceb0a5938244e92fd172560f530bf959724b10353a26f276ea8bbb3ccffd87a80ff581cc828db378a1b202822e9de2a6d461af04b016768bce986176af87ba5d8799fd87a9f581c1318e21d5eb0eb93f23a4d9a52592db44dd48e971fe6de91a8c14071ffd87a80ff581c84dc6d6189703f72bb0d1f8bd34ea1fb4d30125490f74d90d8e443e4d8799fd87a9f581c1d050750038d16006c12ab6f43c0233acaae7e5511ea7cea2638ac30ffd87a80ffd8799f581cb64c1a7aa350783dc615649fe86d9ffd31fe1fc3ae62e4d4292a5eb0581cd8d03140f553bdb5b2abcd8615e1ab6214cf44680cb98efd35fbb25b581c3e8df27e4d1a20debb94b67be21a4df333b1c2daf83ea4d2ddd15cb8581c4442f121ae5abdc9d801053ebaed381cabd12ec8b251f19f4e4d1271581c9039e718c927ba664c15e7ac12c1aa2ab8bf87ca3da5a5414537e003581ce62fc27cad55eaeafb4a790eed11662f40a92d8729f3b95ad68acb97581c0b970000e9ab147200682560ae44ef62d484f019c9cbece2515872ac581c2196da87e927a233737b5a0974ec64d441c12825712861ae680fefdb581c1dc6690b19d6c0128fd8a206634d62ec41cfa1c58dbcfb96ae3bbaee581ced3f053ef237c6d559f218f8342a490ee68fdbb5a0fde6c64b83e8f8ffff".to_string(),
-//                     script_ref: "".to_string(),
-//                     script_hash: "".to_string()
-//                 })
-//             })
-//         };
+    #[test]
+    fn test_process_transfer() {
+        let handle = std::thread::Builder::new()
+            .stack_size(32 * 1024 * 1024)
+            .spawn(|| {
+                let rt = tokio::runtime::Builder::new_multi_thread()
+                    .enable_all()
+                    .build()
+                    .unwrap();
+                rt.block_on(test_process_transfer_case_1());
+            })
+            .unwrap();
 
-//         let app_owner_wallet = get_app_owner_wallet();
-//         let result = handler(request, &app_owner_wallet).await;
-//         println!("Result: {:?}", result);
-//         assert!(result.is_ok());
-//     }
-// }
+        handle.join().unwrap();
+    }
+
+    async fn test_process_transfer_case_1() {
+        dotenv().ok();
+
+        unsafe {
+            std::env::set_var(
+                "DEX_ORACLE_NFT",
+                "9ee27af30bcbcf1a399bfa531f5d9aef63f18c9ea761d5ce96ab3d6d",
+            )
+        };
+        unsafe {
+            std::env::set_var(
+                "USDM_UNIT",
+                "c69b981db7a65e339a6d783755f85a2e03afa1cece9714c55fe4c9135553444d",
+            )
+        };
+        unsafe {
+            std::env::set_var(
+                "OWNER_VKEY",
+                "fa5136e9e9ecbc9071da73eeb6c9a4ff73cbf436105cf8380d1c525c",
+            )
+        };
+        unsafe {
+            std::env::set_var(
+            "APP_OWNER_SEED_PHRASE",
+            "trade,trade,trade,trade,trade,trade,trade,trade,trade,trade,trade,trade,trade,trade,trade,trade,trade,trade,trade,trade,trade,trade,trade,trade",
+        );
+        }
+        unsafe {
+            std::env::set_var(
+            "FEE_COLLECTOR_SEED_PHRASE",
+            "summer,summer,summer,summer,summer,summer,summer,summer,summer,summer,summer,summer,summer,summer,summer,summer,summer,summer,summer,summer,summer,summer,summer,summer",
+        );
+        }
+
+        let request = ProcessTransferRequest {
+            account: Some(AccountInfo {
+                account_id: "08180df3-05ee-4391-8132-4b0775b45f36".to_string(),
+                account_type: "spot_account".to_string(),
+                master_key: "fdeb4bf0e8c077114a4553f1e05395e9fb7114db177f02f7b65c8de4".to_string(),
+                is_script_master_key: false,
+                operation_key: "b21f857716821354725bc2bd255dc2e5d5fdfa202556039b76c080a5".to_string(),
+                is_script_operation_key: false,
+            }),
+            receiver_account: Some(AccountInfo {
+                account_id: "45904491-7ccb-444c-bb23-43c1ae02016a".to_string(),
+                account_type: "spot_account".to_string(),
+                master_key: "04845038ee499ee8bc0afe56f688f27b2dd76f230d3698a9afcc1b66".to_string(),
+                is_script_master_key: false,
+                operation_key: "b21f857716821354725bc2bd255dc2e5d5fdfa202556039b76c080a5".to_string(),
+                is_script_operation_key: false,
+            }),
+            transferral_intent_utxo: Some(UTxO {
+                input: Some(UtxoInput {
+                    output_index: 0,
+                    tx_hash: "80990368ce151551a67ee1758f7fb9f75f0c69de7ef7c0c73a8ae08c0ff1e0a5".to_string(),
+                }),
+                output: Some(UtxoOutput {
+                    address: "addr_test1wqen5pwawre7mkl4d42yr4673fgnc6awu7htu5zhx5dwshcmvju36".to_string(),
+                    amount: vec![
+                        Asset { unit: "lovelace".to_string(), quantity: "0".to_string() },
+                        Asset { unit: "333a05dd70f3eddbf56d5441d75e8a513c6baee7aebe5057351ae85f".to_string(), quantity: "1".to_string() },
+                    ],
+                    data_hash: "1ff3933b1688ee2040e35a14cad672dfd66b3f099aa42aba3323a47f986afe40".to_string(),
+                    plutus_data: "d87a9fd8799fd8799f5008180df305ee439181324b0775b45f36d8799f581cfdeb4bf0e8c077114a4553f1e05395e9fb7114db177f02f7b65c8de4ffd8799f581cb21f857716821354725bc2bd255dc2e5d5fdfa202556039b76c080a5ffff581c2cedf51118d0e78d46062fd4be09e625e3b3a0cb78881639b5807a91ffd87b9fd8799fd8799f50459044917ccb444cbb2343c1ae02016ad8799f581c04845038ee499ee8bc0afe56f688f27b2dd76f230d3698a9afcc1b66ffd8799f581cb21f857716821354725bc2bd255dc2e5d5fdfa202556039b76c080a5ffff581c2cedf51118d0e78d46062fd4be09e625e3b3a0cb78881639b5807a91ffa1581cb28603ecb7ab3818bac7dc5f7f9260652443bbc1a471afb90c7fc816a2401a009896805820ae67ab5990f1d43f7f7ed7916888deeef55b8b27d4d155a2c6192601f1566f4e1a00989680ffff".to_string(),
+                    script_ref: "".to_string(),
+                    script_hash: "".to_string(),
+                }),
+            }),
+            address: "addr_test1qr77kjlsarq8wy22g4flrcznjh5lkug5mvth7qhhkewgmezwvc8hnnjzy82j5twzf8dfy5gjk04yd09t488ys9605dvq4ymc4x".to_string(),
+            collateral_utxo: Some(UTxO {
+                input: Some(UtxoInput {
+                    output_index: 0,
+                    tx_hash: "e4d920a04b1f6197cc9565c30ce33bd3805f8805ca7b6b1802ef369c229c0dca".to_string(),
+                }),
+                output: Some(UtxoOutput {
+                    address: "addr_test1vra9zdhfa8kteyr3mfe7adkf5nlh8jl5xcg9e7pcp5w9yhq5exvwh".to_string(),
+                    amount: vec![Asset { unit: "lovelace".to_string(), quantity: "10000000".to_string() }],
+                    data_hash: "".to_string(),
+                    plutus_data: "".to_string(),
+                    script_ref: "".to_string(),
+                    script_hash: "".to_string(),
+                }),
+            }),
+            dex_order_book_utxo: Some(UTxO {
+                input: Some(UtxoInput {
+                    output_index: 0,
+                    tx_hash: "0a730cdc62c8f28d78930a9d9e40991a4fcc5611b1b7b0b85e88c1a502a82d92".to_string(),
+                }),
+                output: Some(UtxoOutput {
+                    address: "addr_test1wrcdptezp2cdpn4gm0c72xljvzjgvapfnnvtsv34zuefe9q70mdxj".to_string(),
+                    amount: vec![
+                        Asset { unit: "lovelace".to_string(), quantity: "6000000".to_string() },
+                        Asset { unit: "9ee27af30bcbcf1a399bfa531f5d9aef63f18c9ea761d5ce96ab3d6d".to_string(), quantity: "1".to_string() },
+                    ],
+                    data_hash: "82d061db86c6197e533203d4c142bbacdb4fc5b0ea2d32ad2762a166dd1d4cad".to_string(),
+                    plutus_data: "d8799f581cfa5136e9e9ecbc9071da73eeb6c9a4ff73cbf436105cf8380d1c525c581cfa5136e9e9ecbc9071da73eeb6c9a4ff73cbf436105cf8380d1c525cd8799fd8799f50459044917ccb444cbb2343c1ae02016ad8799f581c04845038ee499ee8bc0afe56f688f27b2dd76f230d3698a9afcc1b66ffd8799f581cb21f857716821354725bc2bd255dc2e5d5fdfa202556039b76c080a5ffff581c2cedf51118d0e78d46062fd4be09e625e3b3a0cb78881639b5807a91ff58200000000000000000000000000000000000000000000000000000000000000000581ce1808a4ae0d35578a215cd68cf63b86ee40759650ea4cde97fc8a05dd8799fd87a9f581cda2156330d5ac0c69125eea74b41e58dd14a80a78b71e7b9add8eb4effd87a80ff581c9ee27af30bcbcf1a399bfa531f5d9aef63f18c9ea761d5ce96ab3d6dd8799fd87a9f581cf0d0af220ab0d0cea8dbf1e51bf260a48674299cd8b8323517329c94ffd87a80ff581c333a05dd70f3eddbf56d5441d75e8a513c6baee7aebe5057351ae85f581c0a4af222798c805464ec76ec9f837a7829a6b07b54953eb8c38db405581c2cedf51118d0e78d46062fd4be09e625e3b3a0cb78881639b5807a91581cb28603ecb7ab3818bac7dc5f7f9260652443bbc1a471afb90c7fc816ff".to_string(),
+                    script_ref: "".to_string(),
+                    script_hash: "".to_string(),
+                }),
+            }),
+            account_balance_utxos: Some(BalanceUtxos {
+                utxos: vec![
+                    UTxO {
+                        input: Some(UtxoInput {
+                            output_index: 0,
+                            tx_hash: "64d36e5fc925043549d561051781b81436c5ae553af53762087d9090a8c42c6b".to_string(),
+                        }),
+                        output: Some(UtxoOutput {
+                            address: "addr_test1wq9y4u3z0xxgq4rya3mwe8ur0fuznf4s0d2f204ccwxmgpgw9twn0".to_string(),
+                            amount: vec![
+                                Asset { unit: "lovelace".to_string(), quantity: "0".to_string() },
+                                Asset { unit: "b28603ecb7ab3818bac7dc5f7f9260652443bbc1a471afb90c7fc816".to_string(), quantity: "5000000000".to_string() },
+                            ],
+                            data_hash: "77a29b08e5da44a516d862a7e38ac8fd5ec4aa8f9801b4f120924f1c44223f81".to_string(),
+                            plutus_data: "d8799fd8799f5008180df305ee439181324b0775b45f36d8799f581cfdeb4bf0e8c077114a4553f1e05395e9fb7114db177f02f7b65c8de4ffd8799f581cb21f857716821354725bc2bd255dc2e5d5fdfa202556039b76c080a5ffff581c2cedf51118d0e78d46062fd4be09e625e3b3a0cb78881639b5807a91ff".to_string(),
+                            script_ref: "".to_string(),
+                            script_hash: "".to_string(),
+                        }),
+                    },
+                    UTxO {
+                        input: Some(UtxoInput {
+                            output_index: 5,
+                            tx_hash: "64d36e5fc925043549d561051781b81436c5ae553af53762087d9090a8c42c6b".to_string(),
+                        }),
+                        output: Some(UtxoOutput {
+                            address: "addr_test1wq9y4u3z0xxgq4rya3mwe8ur0fuznf4s0d2f204ccwxmgpgw9twn0".to_string(),
+                            amount: vec![
+                                Asset { unit: "lovelace".to_string(), quantity: "0".to_string() },
+                                Asset { unit: "b28603ecb7ab3818bac7dc5f7f9260652443bbc1a471afb90c7fc816ae67ab5990f1d43f7f7ed7916888deeef55b8b27d4d155a2c6192601f1566f4e".to_string(), quantity: "5000000000".to_string() },
+                            ],
+                            data_hash: "77a29b08e5da44a516d862a7e38ac8fd5ec4aa8f9801b4f120924f1c44223f81".to_string(),
+                            plutus_data: "d8799fd8799f5008180df305ee439181324b0775b45f36d8799f581cfdeb4bf0e8c077114a4553f1e05395e9fb7114db177f02f7b65c8de4ffd8799f581cb21f857716821354725bc2bd255dc2e5d5fdfa202556039b76c080a5ffff581c2cedf51118d0e78d46062fd4be09e625e3b3a0cb78881639b5807a91ff".to_string(),
+                            script_ref: "".to_string(),
+                            script_hash: "".to_string(),
+                        }),
+                    },
+                ],
+                updated_balance_l1: vec![
+                    Asset { unit: "lovelace".to_string(), quantity: "4990000000".to_string() },
+                    Asset { unit: "c69b981db7a65e339a6d783755f85a2e03afa1cece9714c55fe4c9135553444d".to_string(), quantity: "4990000000".to_string() },
+                ],
+            }),
+        };
+
+        let app_owner_wallet = get_app_owner_wallet();
+        let result = handler(request, &app_owner_wallet).await;
+        println!("Result: {:?}", result);
+        assert!(result.is_ok());
+    }
+}

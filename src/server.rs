@@ -6,8 +6,8 @@ use whisky::{calculate_tx_hash, Wallet};
 use hibiki::{
     grpc_metrics_interceptor::MetricsLayer,
     handler::{
-        create_hydra_account_utxo, internal_transfer, process_transfer,
-        serialize_transfer_intent_datum, sign_transaction, sign_transaction_with_fee_collector,
+        internal_transfer, process_transfer, serialize_transfer_intent_datum, sign_transaction,
+        sign_transaction_with_fee_collector,
     },
     metrics, metrics_server,
     services::{
@@ -60,26 +60,6 @@ impl Hibiki for HibikiService {
         let request_result = request.into_inner();
         println!("Got a request - process_transfer {:?}", request_result);
         let reply = match process_transfer::handler(request_result, &self.app_owner_wallet).await {
-            Ok(value) => value,
-            Err(e) => {
-                return Err(Status::failed_precondition(e.to_string()));
-            }
-        };
-        Ok(Response::new(reply))
-    }
-
-    async fn create_hydra_account_utxo(
-        &self,
-        request: Request<services::CreateHydraAccountUtxoRequest>,
-    ) -> Result<Response<services::CreateHydraAccountUtxoResponse>, Status> {
-        let request_result = request.into_inner();
-        println!(
-            "Got a request - create_hydra_account_utxo {:?}",
-            request_result
-        );
-        let reply = match create_hydra_account_utxo::handler(request_result, &self.app_owner_wallet)
-            .await
-        {
             Ok(value) => value,
             Err(e) => {
                 return Err(Status::failed_precondition(e.to_string()));
