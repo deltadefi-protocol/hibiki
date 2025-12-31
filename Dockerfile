@@ -1,25 +1,47 @@
-# to be refactor into smaller file size
-FROM --platform=linux/amd64 rust:1.87 as builder
+# Use Alpine for both builder and runner - native musl, no cross-compile issues
+FROM rust:1.87-alpine AS builder
 
 ARG GITHUB_TOKEN
 
-RUN rustup target add x86_64-unknown-linux-gnu
-RUN apt-get update && apt-get install -y protobuf-compiler
+# Install build dependencies
+RUN apk add --no-cache \
+  musl-dev \
+  openssl-dev \
+  openssl-libs-static \
+  protobuf-dev \
+  protoc \
+  pkgconfig \
+  git \
+  ca-certificates
+
+# Configure git for private repo access
 RUN git config --global url."https://${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/"
+ENV CARGO_NET_GIT_FETCH_WITH_CLI=true
+ENV OPENSSL_STATIC=1
 
-# Create a new empty shell project
 WORKDIR /usr/src/myapp
+
+# Cache dependencies: copy only manifests first
+COPY Cargo.toml Cargo.lock* ./
+
+# Create dummy src to build dependencies
+RUN mkdir -p src && echo "fn main() {}" > src/server.rs
+
+# Build dependencies only (cached unless Cargo.toml changes)
+RUN cargo build --release || true
+RUN rm -rf src
+
+# Copy actual source and rebuild
 COPY . .
+RUN touch src/server.rs && cargo build --release
 
-# Build the project in release mode
-RUN cargo build --release --target=x86_64-unknown-linux-gnu
+# Minimal Alpine runner (~5MB base)
+FROM alpine:3.21 AS runner
 
-# Start a new stage
-FROM --platform=linux/amd64 rust:1.87 as runner
-RUN apt-get update && apt-get install -y libssl-dev && rm -rf /var/lib/apt/lists/*
+RUN apk add --no-cache ca-certificates libgcc
 
-# Copy the binary from the builder stage
-COPY --from=builder /usr/src/myapp/target/x86_64-unknown-linux-gnu/release/hibiki /usr/local/bin/hibiki
+# Copy only the binary
+COPY --from=builder /usr/src/myapp/target/release/hibiki /usr/local/bin/hibiki
 
 EXPOSE 50062
 
