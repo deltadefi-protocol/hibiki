@@ -7,3 +7,6 @@ pub mod metrics;
 pub mod metrics_server;
 pub mod scripts;
 pub mod utils;
+
+#[cfg(test)]
+pub mod test_utils;
