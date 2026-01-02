@@ -282,10 +282,10 @@ pub async fn handler(
 
 #[cfg(test)]
 mod active_tests {
+    use crate::test_utils::init_test_env;
     use crate::utils::wallet::get_app_owner_wallet;
 
     use super::*;
-    use dotenv::dotenv;
     use hibiki_proto::services::{AccountInfo, Asset, UTxO, UtxoInput, UtxoOutput};
     use hibiki_proto::services::{BalanceUtxos, ProcessTransferRequest};
 
@@ -306,62 +306,7 @@ mod active_tests {
     }
 
     async fn test_process_transfer_case_1() {
-        dotenv().ok();
-
-        unsafe {
-            std::env::set_var(
-                "DEX_ORACLE_NFT",
-                "9ee27af30bcbcf1a399bfa531f5d9aef63f18c9ea761d5ce96ab3d6d",
-            )
-        };
-        unsafe {
-            std::env::set_var(
-                "USDM_UNIT",
-                "c69b981db7a65e339a6d783755f85a2e03afa1cece9714c55fe4c9135553444d",
-            )
-        };
-        unsafe {
-            std::env::set_var(
-                "NIGHT_UNIT",
-                "3363b99384d6ee4c4b009068af396c8fdf92dafd111e58a857af04294e49474854",
-            )
-        };
-        unsafe {
-            std::env::set_var(
-                "IAG_UNIT",
-                "82e46eb16633bf8bfa820c83ffeb63192c6e21757d2bf91290b2f41d494147",
-            )
-        };
-        unsafe {
-            std::env::set_var(
-                "SNEK_UNIT",
-                "378f9732c755ed6f4fc8d406f1461d0cca95d7d2e69416784684df39534e454b",
-            )
-        };
-        unsafe {
-            std::env::set_var(
-                "HOSKY_UNIT",
-                "a2818ba06a88bb6c08d10f4f9b897c09768f28d274093628ad7086fc484f534b59",
-            )
-        };
-        unsafe {
-            std::env::set_var(
-                "OWNER_VKEY",
-                "fa5136e9e9ecbc9071da73eeb6c9a4ff73cbf436105cf8380d1c525c",
-            )
-        };
-        unsafe {
-            std::env::set_var(
-            "APP_OWNER_SEED_PHRASE",
-            "trade,trade,trade,trade,trade,trade,trade,trade,trade,trade,trade,trade,trade,trade,trade,trade,trade,trade,trade,trade,trade,trade,trade,trade",
-        );
-        }
-        unsafe {
-            std::env::set_var(
-            "FEE_COLLECTOR_SEED_PHRASE",
-            "summer,summer,summer,summer,summer,summer,summer,summer,summer,summer,summer,summer,summer,summer,summer,summer,summer,summer,summer,summer,summer,summer,summer,summer",
-        );
-        }
+        init_test_env();
 
         let request = ProcessTransferRequest {
             account: Some(AccountInfo {

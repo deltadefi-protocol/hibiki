@@ -28,20 +28,21 @@ pub fn to_l1_assets(
 ) -> Result<Vec<Asset>, String> {
     assets
         .iter()
-        .filter(|asset| {
-            let unit = asset.unit();
-            unit != "lovelace" && !unit.is_empty()
-        })
-        .map(|asset| {
-            let l1_unit = hydra_to_l1_map
-                .get(&asset.unit())
-                .ok_or_else(|| {
-                    format!(
-                        "Unknown Hydra token unit: {}. Please ensure it's registered in hydra_to_l1_token_map.",
-                        asset.unit()
-                    )
-                })?;
-            Ok(Asset::new_from_str(l1_unit, &asset.quantity()))
+        .filter_map(|asset| {
+            match hydra_to_l1_map.get(&asset.unit()) {
+                Some(l1_unit) => {
+                    // Filter out lovelace and empty units
+                    if l1_unit == "lovelace" || l1_unit.is_empty() {
+                        None
+                    } else {
+                        Some(Ok(Asset::new_from_str(l1_unit, &asset.quantity())))
+                    }
+                }
+                None => Some(Err(format!(
+                    "Unknown Hydra token unit: {}. Please ensure it's registered in hydra_to_l1_token_map.",
+                    asset.unit()
+                ))),
+            }
         })
         .collect()
 }
@@ -84,10 +85,11 @@ pub fn blake2b_256_hex(hex_input: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use dotenv::dotenv;
+    use crate::test_utils::init_test_env;
 
     #[test]
     fn test_to_hydra_token_lovelace() {
+        init_test_env();
         let assets = vec![Asset::new_from_str("lovelace", "1000000")];
         let hydra_assets = to_hydra_token(&assets);
 
@@ -98,6 +100,7 @@ mod tests {
 
     #[test]
     fn test_to_hydra_token_custom_asset() {
+        init_test_env();
         let assets = vec![Asset::new_from_str(
             "c69b981db7a65e339a6d783755f85a2e03afa1cece9714c55fe4c9135553444d",
             "100",
@@ -123,6 +126,7 @@ mod tests {
 
     #[test]
     fn test_to_hydra_token_multiple_assets() {
+        init_test_env();
         let assets = vec![
             Asset::new_from_str("lovelace", "1000000"),
             Asset::new_from_str(
@@ -139,14 +143,7 @@ mod tests {
 
     #[test]
     fn test_hydra_to_l1_token_map() {
-        dotenv().ok();
-
-        unsafe {
-            std::env::set_var(
-                "DEX_ORACLE_NFT",
-                "9ee27af30bcbcf1a399bfa531f5d9aef63f18c9ea761d5ce96ab3d6d",
-            )
-        };
+        init_test_env();
         let units = vec![
             "",
             "c69b981db7a65e339a6d783755f85a2e03afa1cece9714c55fe4c9135553444d",
@@ -156,19 +153,12 @@ mod tests {
         assert_eq!(map.len(), 2);
         // Check that lovelace mapping exists
         let hydra_token_hash = crate::constant::hydra_token_hash();
-        assert_eq!(map.get(hydra_token_hash), Some(&"lovelace".to_string()));
+        assert_eq!(map.get(hydra_token_hash), Some(&"".to_string()));
     }
 
     #[test]
     fn test_to_l1_assets() {
-        dotenv().ok();
-
-        unsafe {
-            std::env::set_var(
-                "DEX_ORACLE_NFT",
-                "9ee27af30bcbcf1a399bfa531f5d9aef63f18c9ea761d5ce96ab3d6d",
-            )
-        };
+        init_test_env();
         let usdm_unit = "c69b981db7a65e339a6d783755f85a2e03afa1cece9714c55fe4c9135553444d";
         let units = vec!["", usdm_unit];
         let map = hydra_to_l1_token_map(&units);
@@ -180,28 +170,20 @@ mod tests {
         ];
         let hydra_assets = to_hydra_token(&l1_assets);
 
-        // Convert back to L1 assets
+        // Convert back to L1 assets (lovelace is now filtered out)
         let result = to_l1_assets(&hydra_assets, &map);
         assert!(result.is_ok());
 
         let converted = result.unwrap();
-        assert_eq!(converted.len(), 2);
-        assert_eq!(converted[0].unit(), "lovelace");
-        assert_eq!(converted[0].quantity(), "1000000");
-        assert_eq!(converted[1].unit(), usdm_unit);
-        assert_eq!(converted[1].quantity(), "500");
+        println!("Converted assets: {:?}", converted);
+        assert_eq!(converted.len(), 1); // Only USDM, lovelace is filtered
+        assert_eq!(converted[0].unit(), usdm_unit);
+        assert_eq!(converted[0].quantity(), "500");
     }
 
     #[test]
     fn test_to_l1_assets_unknown_unit() {
-        dotenv().ok();
-
-        unsafe {
-            std::env::set_var(
-                "DEX_ORACLE_NFT",
-                "9ee27af30bcbcf1a399bfa531f5d9aef63f18c9ea761d5ce96ab3d6d",
-            )
-        };
+        init_test_env();
 
         let map = hydra_to_l1_token_map(&[""]); // Only lovelace registered
         let unknown_hydra_assets = vec![Asset::new_from_str("unknown_hash_12345", "100")];
