@@ -10,6 +10,29 @@ pub fn usdm_unit() -> &'static str {
         .get_or_init(|| std::env::var("USDM_UNIT").expect("USDM_UNIT must be set in environment"))
 }
 
+static NIGHT_UNIT: OnceLock<String> = OnceLock::new();
+pub fn night_unit() -> &'static str {
+    NIGHT_UNIT
+        .get_or_init(|| std::env::var("NIGHT_UNIT").expect("NIGHT_UNIT must be set in environment"))
+}
+
+static IAG_UNIT: OnceLock<String> = OnceLock::new();
+pub fn iag_unit() -> &'static str {
+    IAG_UNIT.get_or_init(|| std::env::var("IAG_UNIT").expect("IAG_UNIT must be set in environment"))
+}
+
+static SNEK_UNIT: OnceLock<String> = OnceLock::new();
+pub fn snek_unit() -> &'static str {
+    SNEK_UNIT
+        .get_or_init(|| std::env::var("SNEK_UNIT").expect("SNEK_UNIT must be set in environment"))
+}
+
+static HOSKY_UNIT: OnceLock<String> = OnceLock::new();
+pub fn hosky_unit() -> &'static str {
+    HOSKY_UNIT
+        .get_or_init(|| std::env::var("HOSKY_UNIT").expect("HOSKY_UNIT must be set in environment"))
+}
+
 static DEX_ORACLE_NFT: OnceLock<String> = OnceLock::new();
 pub fn dex_oracle_nft() -> &'static str {
     DEX_ORACLE_NFT.get_or_init(|| {
@@ -27,7 +50,17 @@ pub fn hydra_token_hash() -> &'static str {
 
 static ALL_HYDRA_TO_L1_TOKEN_MAP: OnceLock<HashMap<String, String>> = OnceLock::new();
 pub fn all_hydra_to_l1_token_map() -> &'static HashMap<String, String> {
-    ALL_HYDRA_TO_L1_TOKEN_MAP.get_or_init(|| hydra_to_l1_token_map(&["", usdm_unit()]))
+    ALL_HYDRA_TO_L1_TOKEN_MAP.get_or_init(|| {
+        hydra_to_l1_token_map(&[
+            "",
+            "lovelace",
+            usdm_unit(),
+            night_unit(),
+            iag_unit(),
+            snek_unit(),
+            hosky_unit(),
+        ])
+    })
 }
 
 /// Script blueprints organized by function

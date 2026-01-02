@@ -11,7 +11,7 @@ pub fn hydra_to_l1_token_map(units: &[&str]) -> HashMap<String, String> {
 
     for unit in units {
         if *unit == "lovelace" || unit.is_empty() {
-            map.insert(hydra_token_hash.to_string(), "lovelace".to_string());
+            map.insert(hydra_token_hash.to_string(), unit.to_string());
         } else {
             let hashed_unit = blake2b_256_hex(unit);
             let hydra_unit = format!("{}{}", hydra_token_hash, hashed_unit);
@@ -28,6 +28,10 @@ pub fn to_l1_assets(
 ) -> Result<Vec<Asset>, String> {
     assets
         .iter()
+        .filter(|asset| {
+            let unit = asset.unit();
+            unit != "lovelace" && !unit.is_empty()
+        })
         .map(|asset| {
             let l1_unit = hydra_to_l1_map
                 .get(&asset.unit())
