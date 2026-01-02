@@ -322,6 +322,30 @@ mod active_tests {
         };
         unsafe {
             std::env::set_var(
+                "NIGHT_UNIT",
+                "3363b99384d6ee4c4b009068af396c8fdf92dafd111e58a857af04294e49474854",
+            )
+        };
+        unsafe {
+            std::env::set_var(
+                "IAG_UNIT",
+                "82e46eb16633bf8bfa820c83ffeb63192c6e21757d2bf91290b2f41d494147",
+            )
+        };
+        unsafe {
+            std::env::set_var(
+                "SNEK_UNIT",
+                "378f9732c755ed6f4fc8d406f1461d0cca95d7d2e69416784684df39534e454b",
+            )
+        };
+        unsafe {
+            std::env::set_var(
+                "HOSKY_UNIT",
+                "a2818ba06a88bb6c08d10f4f9b897c09768f28d274093628ad7086fc484f534b59",
+            )
+        };
+        unsafe {
+            std::env::set_var(
                 "OWNER_VKEY",
                 "fa5136e9e9ecbc9071da73eeb6c9a4ff73cbf436105cf8380d1c525c",
             )
