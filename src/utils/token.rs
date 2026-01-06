@@ -11,7 +11,7 @@ pub fn hydra_to_l1_token_map(units: &[&str]) -> HashMap<String, String> {
 
     for unit in units {
         if *unit == "lovelace" || unit.is_empty() {
-            map.insert(hydra_token_hash.to_string(), unit.to_string());
+            map.insert(hydra_token_hash.to_string(), "lovelace".to_string());
         } else {
             let hashed_unit = blake2b_256_hex(unit);
             let hydra_unit = format!("{}{}", hydra_token_hash, hashed_unit);
@@ -28,20 +28,18 @@ pub fn to_l1_assets(
 ) -> Result<Vec<Asset>, String> {
     assets
         .iter()
-        .filter_map(|asset| {
+        // Filter out lovelace (hydra token hash) and empty units before conversion
+        .filter(|asset| {
+            let unit = asset.unit();
+            !unit.is_empty() && unit != "lovelace"
+        })
+        .map(|asset| {
             match hydra_to_l1_map.get(&asset.unit()) {
-                Some(l1_unit) => {
-                    // Filter out lovelace and empty units
-                    if l1_unit == "lovelace" || l1_unit.is_empty() {
-                        None
-                    } else {
-                        Some(Ok(Asset::new_from_str(l1_unit, &asset.quantity())))
-                    }
-                }
-                None => Some(Err(format!(
+                Some(l1_unit) => Ok(Asset::new_from_str(l1_unit, &asset.quantity())),
+                None => Err(format!(
                     "Unknown Hydra token unit: {}. Please ensure it's registered in hydra_to_l1_token_map.",
                     asset.unit()
-                ))),
+                )),
             }
         })
         .collect()
@@ -153,7 +151,7 @@ mod tests {
         assert_eq!(map.len(), 2);
         // Check that lovelace mapping exists
         let hydra_token_hash = crate::constant::hydra_token_hash();
-        assert_eq!(map.get(hydra_token_hash), Some(&"".to_string()));
+        assert_eq!(map.get(hydra_token_hash), Some(&"lovelace".to_string()));
     }
 
     #[test]
@@ -176,9 +174,9 @@ mod tests {
 
         let converted = result.unwrap();
         println!("Converted assets: {:?}", converted);
-        assert_eq!(converted.len(), 1); // Only USDM, lovelace is filtered
-        assert_eq!(converted[0].unit(), usdm_unit);
-        assert_eq!(converted[0].quantity(), "500");
+        assert_eq!(converted.len(), 2);
+        assert_eq!(converted[0].unit(), "lovelace");
+        assert_eq!(converted[0].quantity(), "1000000");
     }
 
     #[test]
