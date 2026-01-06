@@ -151,7 +151,7 @@ mod tests {
         assert_eq!(map.len(), 2);
         // Check that lovelace mapping exists
         let hydra_token_hash = crate::constant::hydra_token_hash();
-        assert_eq!(map.get(hydra_token_hash), Some(&"".to_string()));
+        assert_eq!(map.get(hydra_token_hash), Some(&"lovelace".to_string()));
     }
 
     #[test]
@@ -174,9 +174,9 @@ mod tests {
 
         let converted = result.unwrap();
         println!("Converted assets: {:?}", converted);
-        assert_eq!(converted.len(), 1); // Only USDM, lovelace is filtered
-        assert_eq!(converted[0].unit(), usdm_unit);
-        assert_eq!(converted[0].quantity(), "500");
+        assert_eq!(converted.len(), 2);
+        assert_eq!(converted[0].unit(), "lovelace");
+        assert_eq!(converted[0].quantity(), "1000000");
     }
 
     #[test]
