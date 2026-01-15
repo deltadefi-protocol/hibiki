@@ -624,3 +624,45 @@ pub struct CancelWithdrawalIntent(pub Constr1<MValue>);
 
 #[derive(Clone, Debug, ImplConstr)]
 pub struct TransferIntent(pub Constr2<Box<(UserTradeAccount, MValue)>>);
+
+// Order types for place order
+
+/// Order type enum - LimitOrder (Constr0) or MarketOrder (Constr1)
+#[derive(Debug, Clone, ConstrEnum)]
+pub enum OrderType {
+    LimitOrder,
+    MarketOrder,
+}
+
+/// Token tuple type for base/quote token (PolicyId, AssetName)
+pub type TokenTuple = Tuple<(ByteString, ByteString)>;
+
+/// Order details for placing a new order
+/// Fields: order_id, base_token, quote_token, is_buy, price, size, commission, account, order_type
+#[derive(Clone, Debug, ImplConstr)]
+pub struct OrderDetails(
+    pub  Constr0<
+        Box<(
+            ByteArray,
+            TokenTuple,
+            TokenTuple,
+            Bool,
+            Int,
+            Int,
+            Int,
+            UserAccount,
+            OrderType,
+        )>,
+    >,
+);
+
+/// Place order intent: order details + authorized account value
+#[derive(Clone, Debug, ImplConstr)]
+pub struct PlaceOrderIntent(pub Constr0<Box<(OrderDetails, MValue)>>);
+
+/// Hydra order book intent types
+#[derive(Debug, Clone, ConstrEnum)]
+pub enum HydraOrderBookIntent {
+    PlaceOrderIntent(PlaceOrderIntent),
+    // ModifyOrderIntent can be added later if needed
+}

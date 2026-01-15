@@ -6,8 +6,10 @@ use whisky::{calculate_tx_hash, Wallet};
 use hibiki::{
     grpc_metrics_interceptor::MetricsLayer,
     handler::{
-        internal_transfer, process_transfer, serialize_transfer_intent_datum, sign_transaction,
-        sign_transaction_with_fee_collector,
+        internal_transfer, process_transfer, serialize_transfer_intent_datum,
+        sign_transaction, sign_transaction_with_fee_collector,
+        // TODO: Uncomment when proto is regenerated
+        // place_order,
     },
     metrics, metrics_server,
     services::{
@@ -52,6 +54,23 @@ impl Hibiki for HibikiService {
         };
         Ok(Response::new(reply))
     }
+
+    // TODO: Uncomment when hibiki-proto is regenerated with PlaceOrderRequest
+    // async fn place_order(
+    //     &self,
+    //     request: Request<services::PlaceOrderRequest>,
+    // ) -> Result<Response<services::IntentTxResponse>, Status> {
+    //     let request_result = request.into_inner();
+    //     println!("Got a request - place_order {:?}", request_result);
+    //
+    //     let reply = match place_order::handler(request_result).await {
+    //         Ok(value) => value,
+    //         Err(e) => {
+    //             return Err(Status::failed_precondition(e.to_string()));
+    //         }
+    //     };
+    //     Ok(Response::new(reply))
+    // }
 
     async fn process_transfer(
         &self,
