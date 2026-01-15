@@ -48,6 +48,25 @@ commands:
             git checkout "${BRANCH_NAME}"
             echo "Successfully checked out branch: ${BRANCH_NAME}"
 
+            # Export branch name for downstream steps
+            echo "export BRANCH_NAME=${BRANCH_NAME}" >> $BASH_ENV
+
+  sync_plutus:
+    description: "Sync plutus.json from deltadefi-scripts repo (same branch)"
+    steps:
+      - run:
+          name: Sync plutus.json
+          command: |
+            SCRIPTS_REPO="deltadefi-protocol/deltadefi-scripts"
+            echo "📦 Syncing plutus.json from ${SCRIPTS_REPO} branch: ${BRANCH_NAME}"
+            if curl -sfL "https://raw.githubusercontent.com/${SCRIPTS_REPO}/${BRANCH_NAME}/plutus.json" -o src/scripts/plutus.json; then
+              echo "✅ Successfully synced from branch: ${BRANCH_NAME}"
+            else
+              echo "⚠️ Branch ${BRANCH_NAME} not found, falling back to main"
+              curl -sfL "https://raw.githubusercontent.com/${SCRIPTS_REPO}/main/plutus.json" -o src/scripts/plutus.json
+              echo "✅ Successfully synced from branch: main"
+            fi
+
   detect_environment:
     description: "Detect environment based on branch (dev/staging/prod)"
     steps:
@@ -117,6 +136,7 @@ jobs:
     resource_class: small
     steps:
       - clone_and_checkout_branch
+      - sync_plutus
       - detect_environment
       - setup_gcp_service_key
       - setup_gcloud_cli
