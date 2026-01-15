@@ -1,3 +1,4 @@
 /target
 .env
 tarpaulin-report.html
+src/scripts/plutus.json

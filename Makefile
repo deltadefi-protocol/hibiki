@@ -5,10 +5,11 @@ SCRIPTS_REPO := deltadefi-protocol/deltadefi-scripts
 
 sync-plutus:
 	@echo "Syncing plutus.json from $(SCRIPTS_REPO) branch: $(BRANCH)"
-	@curl -sL "https://raw.githubusercontent.com/$(SCRIPTS_REPO)/$(BRANCH)/plutus.json" \
+	@curl -sfL "https://raw.githubusercontent.com/$(SCRIPTS_REPO)/$(BRANCH)/plutus.json" \
 		-o src/scripts/plutus.json || \
-		curl -sL "https://raw.githubusercontent.com/$(SCRIPTS_REPO)/main/plutus.json" \
-		-o src/scripts/plutus.json
+		(echo "Branch $(BRANCH) not found, falling back to main" && \
+		curl -sfL "https://raw.githubusercontent.com/$(SCRIPTS_REPO)/main/plutus.json" \
+		-o src/scripts/plutus.json)
 
 test: sync-plutus
 	@cargo test
