@@ -10,7 +10,7 @@ sync-plutus:
 		curl -sL "https://raw.githubusercontent.com/$(SCRIPTS_REPO)/main/plutus.json" \
 		-o src/scripts/plutus.json
 
-test:
+test: sync-plutus
 	@cargo test
 
 run: sync-plutus
