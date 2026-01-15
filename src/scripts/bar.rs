@@ -21,18 +21,20 @@ use whisky::data::{
     OutputReference, PlutusData, PlutusDataJson, PolicyId, ScriptHash, Tuple, VerificationKeyHash,
 };
 
-pub struct AppConfig {
+use crate::config::AppConfig;
+
+pub struct ScriptConfig {
     pub plutus_version: LanguageVersion,
     pub network_id: u8,
     pub stake_key_hash: Option<String>,
     pub is_stake_script_credential: bool,
 }
 
-impl AppConfig {
+impl ScriptConfig {
     pub fn new() -> Self {
         Self {
             plutus_version: LanguageVersion::V3,
-            network_id: 0,
+            network_id: AppConfig::new().network_id.parse().unwrap(),
             stake_key_hash: None,
             is_stake_script_credential: false,
         }
@@ -42,7 +44,7 @@ impl AppConfig {
 pub fn oracle_nft_mint_minting_blueprint(
     params: OutputReference,
 ) -> MintingBlueprint<OutputReference, MintPolarity> {
-    let app_config = AppConfig::new();
+    let app_config = ScriptConfig::new();
     let mut blueprint = MintingBlueprint::new(app_config.plutus_version);
     blueprint
         .param_script(
@@ -57,7 +59,7 @@ pub fn oracle_nft_mint_minting_blueprint(
 pub fn dex_order_book_spend_spending_blueprint(
     params: (PolicyId, PolicyId),
 ) -> SpendingBlueprint<(PolicyId, PolicyId), DexOrderBookRedeemer, DexOrderBookDatum> {
-    let app_config = AppConfig::new();
+    let app_config = ScriptConfig::new();
     let mut blueprint =
         SpendingBlueprint::new(app_config.plutus_version, app_config.network_id, None);
     let param_strs: Vec<String> = vec![params.0.to_json_string(), params.1.to_json_string()];
@@ -75,7 +77,7 @@ pub fn dex_order_book_spend_spending_blueprint(
 pub fn hydra_account_spend_spending_blueprint(
     params: &PolicyId,
 ) -> SpendingBlueprint<PolicyId, HydraAccountRedeemer, UserAccount> {
-    let app_config = AppConfig::new();
+    let app_config = ScriptConfig::new();
     let mut blueprint =
         SpendingBlueprint::new(app_config.plutus_version, app_config.network_id, None);
     blueprint
@@ -91,7 +93,7 @@ pub fn hydra_account_spend_spending_blueprint(
 pub fn hydra_account_withdraw_withdrawal_blueprint(
     params: &PolicyId,
 ) -> WithdrawalBlueprint<PolicyId, HydraAccountOperation> {
-    let app_config = AppConfig::new();
+    let app_config = ScriptConfig::new();
     let mut blueprint = WithdrawalBlueprint::new(app_config.plutus_version, app_config.network_id);
     blueprint
         .param_script(
@@ -106,7 +108,7 @@ pub fn hydra_account_withdraw_withdrawal_blueprint(
 pub fn hydra_order_book_spend_spending_blueprint(
     params: &PolicyId,
 ) -> SpendingBlueprint<PolicyId, PlutusData, Order> {
-    let app_config = AppConfig::new();
+    let app_config = ScriptConfig::new();
     let mut blueprint =
         SpendingBlueprint::new(app_config.plutus_version, app_config.network_id, None);
     blueprint
@@ -122,7 +124,7 @@ pub fn hydra_order_book_spend_spending_blueprint(
 pub fn hydra_order_book_withdraw_withdrawal_blueprint(
     params: &PolicyId,
 ) -> WithdrawalBlueprint<PolicyId, HydraOrderBookRedeemer> {
-    let app_config = AppConfig::new();
+    let app_config = ScriptConfig::new();
     let mut blueprint = WithdrawalBlueprint::new(app_config.plutus_version, app_config.network_id);
     blueprint
         .param_script(
@@ -137,7 +139,7 @@ pub fn hydra_order_book_withdraw_withdrawal_blueprint(
 pub fn hydra_order_book_publish_withdrawal_blueprint(
     params: &PolicyId,
 ) -> WithdrawalBlueprint<PolicyId, PlutusData> {
-    let app_config = AppConfig::new();
+    let app_config = ScriptConfig::new();
     let mut blueprint = WithdrawalBlueprint::new(app_config.plutus_version, app_config.network_id);
     blueprint
         .param_script(
@@ -152,7 +154,7 @@ pub fn hydra_order_book_publish_withdrawal_blueprint(
 pub fn hydra_tokens_mint_minting_blueprint(
     params: &PolicyId,
 ) -> MintingBlueprint<PolicyId, HydraTokensRedeemer> {
-    let app_config = AppConfig::new();
+    let app_config = ScriptConfig::new();
     let mut blueprint = MintingBlueprint::new(app_config.plutus_version);
     blueprint
         .param_script(
@@ -167,7 +169,7 @@ pub fn hydra_tokens_mint_minting_blueprint(
 pub fn hydra_user_intent_spend_spending_blueprint(
     params: &PolicyId,
 ) -> SpendingBlueprint<PolicyId, PlutusData, HydraUserIntentDatum> {
-    let app_config = AppConfig::new();
+    let app_config = ScriptConfig::new();
     let mut blueprint =
         SpendingBlueprint::new(app_config.plutus_version, app_config.network_id, None);
     blueprint
@@ -183,7 +185,7 @@ pub fn hydra_user_intent_spend_spending_blueprint(
 pub fn hydra_user_intent_mint_minting_blueprint(
     params: &PolicyId,
 ) -> MintingBlueprint<PolicyId, HydraUserIntentRedeemer> {
-    let app_config = AppConfig::new();
+    let app_config = ScriptConfig::new();
     let mut blueprint = MintingBlueprint::new(app_config.plutus_version);
     blueprint
         .param_script(
