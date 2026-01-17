@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use whisky::{
     calculate_tx_hash,
     data::{Constr, List, PlutusData, PlutusDataJson},
-    Budget, WData, WError, WRedeemer, Wallet,
+    WData, WError, Wallet,
 };
 
 use crate::{
@@ -87,13 +87,10 @@ pub async fn handler(
             &intent_utxo.output.address,
         )
         .tx_in_inline_datum_present()
-        .tx_in_redeemer_value(&WRedeemer {
-            data: user_intent_spend.redeemer(PlutusData::Constr(Constr::new(
-                1,
-                Box::new(PlutusData::List(List::new(&[]))),
-            ))),
-            ex_units: Budget::default(),
-        })
+        .tx_in_redeemer_value(&user_intent_spend.redeemer(
+            PlutusData::Constr(Constr::new(1, Box::new(PlutusData::List(List::new(&[]))))),
+            None,
+        ))
         .spending_tx_in_reference(
             collateral.input.tx_hash.as_str(),
             l2_ref_scripts_index::hydra_user_intent::SPEND,
@@ -115,10 +112,9 @@ pub async fn handler(
                 &from_utxo.output.address,
             )
             .tx_in_inline_datum_present()
-            .tx_in_redeemer_value(&WRedeemer {
-                data: account_balance_spend.redeemer(HydraAccountRedeemer::HydraAccountOperate),
-                ex_units: Budget::default(),
-            })
+            .tx_in_redeemer_value(
+                &account_balance_spend.redeemer(HydraAccountRedeemer::HydraAccountOperate, None),
+            )
             .spending_tx_in_reference(
                 collateral.input.tx_hash.as_str(),
                 l2_ref_scripts_index::hydra_account::SPEND,
@@ -165,10 +161,9 @@ pub async fn handler(
     tx_builder
         .mint_plutus_script_v3()
         .mint(-1, &user_intent_mint.hash, "")
-        .mint_redeemer_value(&WRedeemer {
-            data: user_intent_mint.redeemer(HydraUserIntentRedeemer::<PlutusData>::BurnIntent),
-            ex_units: Budget::default(),
-        })
+        .mint_redeemer_value(
+            &user_intent_mint.redeemer(HydraUserIntentRedeemer::<PlutusData>::BurnIntent, None),
+        )
         .mint_tx_in_reference(
             &collateral.input.tx_hash,
             l2_ref_scripts_index::hydra_user_intent::MINT,
@@ -179,10 +174,9 @@ pub async fn handler(
         // withdrawal logic
         .withdrawal_plutus_script_v3()
         .withdrawal(&internal_transfer_withdraw.address, 0)
-        .withdrawal_redeemer_value(&WRedeemer {
-            data: internal_transfer_withdraw.redeemer(HydraAccountOperation::ProcessTransferal),
-            ex_units: Budget::default(),
-        })
+        .withdrawal_redeemer_value(
+            &internal_transfer_withdraw.redeemer(HydraAccountOperation::ProcessTransferal, None),
+        )
         .withdrawal_tx_in_reference(
             &collateral.input.tx_hash,
             l2_ref_scripts_index::hydra_account::WITHDRAWAL,

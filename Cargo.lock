@@ -4432,7 +4432,7 @@ dependencies = [
 
 [[package]]
 name = "whisky"
-version = "1.0.18"
+version = "1.0.20"
 dependencies = [
  "async-trait",
  "cryptoxide",
@@ -4462,7 +4462,7 @@ dependencies = [
 
 [[package]]
 name = "whisky-common"
-version = "1.0.18"
+version = "1.0.20"
 dependencies = [
  "async-trait",
  "hex",
@@ -4475,7 +4475,7 @@ dependencies = [
 
 [[package]]
 name = "whisky-csl"
-version = "1.0.18"
+version = "1.0.20"
 dependencies = [
  "cardano-serialization-lib",
  "cquisitor-lib",
@@ -4501,7 +4501,7 @@ dependencies = [
 
 [[package]]
 name = "whisky-macros"
-version = "1.0.18"
+version = "1.0.20"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -4510,7 +4510,7 @@ dependencies = [
 
 [[package]]
 name = "whisky-pallas"
-version = "1.0.0"
+version = "1.0.20"
 dependencies = [
  "bech32 0.11.1",
  "hex",
@@ -4523,7 +4523,7 @@ dependencies = [
 
 [[package]]
 name = "whisky-provider"
-version = "1.0.18"
+version = "1.0.20"
 dependencies = [
  "async-trait",
  "futures",
@@ -4539,7 +4539,7 @@ dependencies = [
 
 [[package]]
 name = "whisky-wallet"
-version = "1.0.18"
+version = "1.0.20"
 dependencies = [
  "aes-gcm",
  "base64 0.22.1",

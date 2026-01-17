@@ -1,12 +1,10 @@
 use hibiki_proto::services::{SameAccountTransferalRequest, SameAccountTransferalResponse};
-use whisky::{calculate_tx_hash, data::PlutusDataJson, Budget, WData, WError, WRedeemer, Wallet};
+use whisky::{calculate_tx_hash, data::PlutusDataJson, WData, WError, Wallet};
 
 use crate::{
     config::AppConfig,
     handler::sign_transaction::check_signature_sign_tx,
-    scripts::{
-        l2_ref_scripts_index, HydraAccountOperation, HydraAccountRedeemer, ScriptCache, UserAccount,
-    },
+    scripts::{HydraAccountOperation, HydraAccountRedeemer, ScriptCache, UserAccount},
     utils::{
         hydra::get_hydra_tx_builder,
         proto::{from_proto_balance_utxos, from_proto_utxo, TxIndexAssetsMap},
@@ -38,22 +36,19 @@ pub async fn handler(
     let account_balance_address = &balance_utxos[0].output.address;
 
     // Use cached script info
-    let account_balance_spend = &scripts.hydra_account_spend;
+    let hydra_account_spend = &scripts.hydra_account_spend;
     let hydra_account_withdrawal = &scripts.hydra_account_withdrawal;
 
     let mut unit_tx_index_map = TxIndexAssetsMap::new(updated_balance_l1.len());
 
     // Build script reference UTxOs using cached script info
-    let spend_ref_utxo = account_balance_spend.ref_utxo(&collateral)?;
-    let withdrawal_ref_utxo = hydra_account_withdrawal.ref_utxo(&collateral)?;
-
     let mut tx_builder = get_hydra_tx_builder();
 
     // Reference oracle UTxO
     tx_builder
         .read_only_tx_in_reference(&ref_input.input.tx_hash, ref_input.input.output_index, None)
-        .input_for_evaluation(&ref_input)
-        .input_for_evaluation(&spend_ref_utxo);
+        .input_for_evaluation(&hydra_account_spend.ref_utxo(&collateral)?)
+        .input_for_evaluation(&hydra_account_withdrawal.ref_utxo(&collateral)?);
 
     // Spend all balance UTxOs using HydraAccountOperate (Constr1)
     for utxo in &balance_utxos {
@@ -66,15 +61,14 @@ pub async fn handler(
                 &utxo.output.address,
             )
             .tx_in_inline_datum_present()
-            .tx_in_redeemer_value(&WRedeemer {
-                data: account_balance_spend.redeemer(HydraAccountRedeemer::HydraAccountOperate),
-                ex_units: Budget::default(),
-            })
+            .tx_in_redeemer_value(
+                &hydra_account_spend.redeemer(HydraAccountRedeemer::HydraAccountOperate, None),
+            )
             .spending_tx_in_reference(
                 &collateral.input.tx_hash,
-                l2_ref_scripts_index::hydra_account::SPEND,
-                &account_balance_spend.hash,
-                account_balance_spend.size,
+                scripts.hydra_account_spend.ref_output_index,
+                &hydra_account_spend.hash,
+                hydra_account_spend.size,
             )
             .input_for_evaluation(&utxo);
     }
@@ -88,21 +82,20 @@ pub async fn handler(
         unit_tx_index_map.insert(&[asset]);
     }
 
-    let withdrawal_redeemer = HydraAccountOperation::ProcessSameAccountTransferal(account);
     tx_builder
         .withdrawal_plutus_script_v3()
         .withdrawal(&hydra_account_withdrawal.address, 0)
-        .withdrawal_redeemer_value(&WRedeemer {
-            data: WData::JSON(withdrawal_redeemer.to_json_string()),
-            ex_units: Budget::default(),
-        })
+        .withdrawal_redeemer_value(&hydra_account_withdrawal.redeemer(
+            HydraAccountOperation::ProcessSameAccountTransferal(account),
+            None,
+        ))
         .withdrawal_tx_in_reference(
             &collateral.input.tx_hash,
-            l2_ref_scripts_index::hydra_account::WITHDRAWAL,
+            scripts.hydra_account_withdrawal.ref_output_index,
             &hydra_account_withdrawal.hash,
             hydra_account_withdrawal.size,
         )
-        .input_for_evaluation(&withdrawal_ref_utxo)
+        .input_for_evaluation(&hydra_account_withdrawal.ref_utxo(&collateral)?)
         .tx_in_collateral(
             &collateral.input.tx_hash,
             collateral.input.output_index,
