@@ -1,3 +1,4 @@
+use crate::config::constant::hydra_token_hash;
 use blake2::{
     digest::{Update, VariableOutput},
     Blake2bVar,
@@ -6,7 +7,7 @@ use std::collections::HashMap;
 use whisky::Asset;
 
 pub fn hydra_to_l1_token_map(units: &[&str]) -> HashMap<String, String> {
-    let hydra_token_hash = crate::constant::hydra_token_hash();
+    let hydra_token_hash = hydra_token_hash();
     let mut map = HashMap::with_capacity(units.len());
 
     for unit in units {
@@ -46,7 +47,7 @@ pub fn to_l1_assets(
 }
 
 pub fn to_hydra_token(assets: &[Asset]) -> Vec<Asset> {
-    let hydra_token_hash = crate::constant::hydra_token_hash();
+    let hydra_token_hash = hydra_token_hash();
 
     assets
         .iter()
@@ -150,7 +151,7 @@ mod tests {
 
         assert_eq!(map.len(), 2);
         // Check that lovelace mapping exists
-        let hydra_token_hash = crate::constant::hydra_token_hash();
+        let hydra_token_hash = hydra_token_hash();
         assert_eq!(map.get(hydra_token_hash), Some(&"lovelace".to_string()));
     }
 

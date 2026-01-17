@@ -5,20 +5,18 @@ use std::collections::HashMap;
 use whisky::{
     calculate_tx_hash,
     data::{Constr, List, PlutusData, PlutusDataJson},
-    Budget, UTxO, UtxoInput, UtxoOutput, WData, WError, WRedeemer, Wallet,
+    Budget, WData, WError, WRedeemer, Wallet,
 };
 
 use crate::{
-    config::AppConfig,
-    constant::{all_hydra_to_l1_token_map, dex_oracle_nft, l2_ref_scripts_index},
+    config::{constant::all_hydra_to_l1_token_map, AppConfig},
     handler::sign_transaction::check_signature_sign_tx,
     scripts::{
-        hydra_account_spend_spending_blueprint, hydra_account_withdraw_withdrawal_blueprint,
-        hydra_user_intent_mint_minting_blueprint, hydra_user_intent_spend_spending_blueprint,
-        HydraAccountOperation, HydraAccountRedeemer, HydraUserIntentRedeemer, UserTradeAccount,
+        l2_ref_scripts_index, HydraAccountOperation, HydraAccountRedeemer, HydraUserIntentRedeemer,
+        ScriptCache, UserAccount,
     },
     utils::{
-        hydra::{get_hydra_tx_builder, get_script_ref_hex},
+        hydra::get_hydra_tx_builder,
         proto::{
             extract_transfer_amount_from_intent, from_proto_balance_utxos, from_proto_utxo,
             to_proto_amount,
@@ -30,14 +28,23 @@ use crate::{
 pub async fn handler(
     request: ProcessTransferRequest,
     app_owner_wallet: &Wallet,
+    config: &AppConfig,
+    scripts: &ScriptCache,
 ) -> Result<ProcessTransferResponse, WError> {
-    let AppConfig { app_owner_vkey, .. } = AppConfig::new();
+    let app_owner_vkey = &config.app_owner_vkey;
+    let account_ops_script_hash = &scripts.hydra_order_book_withdrawal.hash;
 
     let collateral = from_proto_utxo(request.collateral_utxo.as_ref().unwrap());
     let ref_input = from_proto_utxo(request.dex_order_book_utxo.as_ref().unwrap());
     let intent_utxo = from_proto_utxo(request.transferral_intent_utxo.as_ref().unwrap());
-    let from_account = UserTradeAccount::from_proto(request.account.as_ref().unwrap());
-    let to_account = UserTradeAccount::from_proto(request.receiver_account.as_ref().unwrap());
+    let from_account = UserAccount::from_proto_trade_account(
+        request.account.as_ref().unwrap(),
+        account_ops_script_hash,
+    );
+    let to_account = UserAccount::from_proto_trade_account(
+        request.receiver_account.as_ref().unwrap(),
+        account_ops_script_hash,
+    );
 
     // Parse sender's balance UTXOs
     let (from_updated_balance_l1, from_account_utxos) =
@@ -48,11 +55,10 @@ pub async fn handler(
     // For outputs, we need one UTXO address - use the first sender's UTXO address as template
     let account_balance_address = &from_account_utxos[0].output.address;
 
-    let policy_id = whisky::data::PolicyId::new(dex_oracle_nft());
-    let user_intent_mint = hydra_user_intent_mint_minting_blueprint(&policy_id);
-    let user_intent_spend = hydra_user_intent_spend_spending_blueprint(&policy_id);
-    let account_balance_spend = hydra_account_spend_spending_blueprint(&policy_id);
-    let internal_transfer_withdraw = hydra_account_withdraw_withdrawal_blueprint(&policy_id);
+    let user_intent_mint = &scripts.user_intent_mint;
+    let user_intent_spend = &scripts.user_intent_spend;
+    let account_balance_spend = &scripts.hydra_account_spend;
+    let internal_transfer_withdraw = &scripts.hydra_account_withdrawal;
 
     let mut from_unit_tx_index_map: HashMap<String, AssetList> =
         HashMap::with_capacity(from_updated_balance_l1.len());
@@ -61,71 +67,11 @@ pub async fn handler(
 
     let mut current_index = 0u32;
 
-    let intent_mint_script_ref_hex = Some(get_script_ref_hex(&user_intent_mint.cbor)?);
-    let intent_mint_ref_utxo = UTxO {
-        input: UtxoInput {
-            output_index: l2_ref_scripts_index::hydra_user_intent::MINT,
-            tx_hash: collateral.input.tx_hash.clone(),
-        },
-        output: UtxoOutput {
-            address: collateral.output.address.clone(),
-            amount: Vec::new(),
-            data_hash: None,
-            plutus_data: None,
-            script_ref: intent_mint_script_ref_hex,
-            script_hash: Some(user_intent_mint.hash.clone()),
-        },
-    };
-
-    let intent_spend_script_ref_hex = Some(get_script_ref_hex(&user_intent_spend.cbor)?);
-    let intent_spend_ref_utxo = UTxO {
-        input: UtxoInput {
-            output_index: l2_ref_scripts_index::hydra_user_intent::SPEND,
-            tx_hash: collateral.input.tx_hash.clone(),
-        },
-        output: UtxoOutput {
-            address: collateral.output.address.clone(),
-            amount: Vec::new(),
-            data_hash: None,
-            plutus_data: None,
-            script_ref: intent_spend_script_ref_hex,
-            script_hash: Some(user_intent_mint.hash.clone()),
-        },
-    };
-
-    let account_balance_spend_script_ref_hex =
-        Some(get_script_ref_hex(&account_balance_spend.cbor)?);
-    let account_balance_spend_ref_utxo = UTxO {
-        input: UtxoInput {
-            output_index: l2_ref_scripts_index::hydra_account_balance::SPEND,
-            tx_hash: collateral.input.tx_hash.clone(),
-        },
-        output: UtxoOutput {
-            address: collateral.output.address.clone(),
-            amount: Vec::new(),
-            data_hash: None,
-            plutus_data: None,
-            script_ref: account_balance_spend_script_ref_hex,
-            script_hash: Some(user_intent_mint.hash.clone()),
-        },
-    };
-
-    let account_balance_withdrawal_script_ref_hex =
-        Some(get_script_ref_hex(&account_balance_spend.cbor)?);
-    let account_balance_withdrawal_ref_utxo = UTxO {
-        input: UtxoInput {
-            output_index: l2_ref_scripts_index::hydra_account_balance::WITHDRAWAL,
-            tx_hash: collateral.input.tx_hash.clone(),
-        },
-        output: UtxoOutput {
-            address: collateral.output.address.clone(),
-            amount: Vec::new(),
-            data_hash: None,
-            plutus_data: None,
-            script_ref: account_balance_withdrawal_script_ref_hex,
-            script_hash: Some(user_intent_mint.hash.clone()),
-        },
-    };
+    // Build script reference UTxOs using cached script info
+    let mint_ref_utxo = user_intent_mint.ref_utxo(&collateral)?;
+    let spend_ref_utxo = user_intent_spend.ref_utxo(&collateral)?;
+    let balance_spend_ref_utxo = account_balance_spend.ref_utxo(&collateral)?;
+    let balance_withdrawal_ref_utxo = internal_transfer_withdraw.ref_utxo(&collateral)?;
 
     let mut tx_builder = get_hydra_tx_builder();
     tx_builder
@@ -151,12 +97,12 @@ pub async fn handler(
         .spending_tx_in_reference(
             collateral.input.tx_hash.as_str(),
             l2_ref_scripts_index::hydra_user_intent::SPEND,
-            &user_intent_mint.hash,
-            user_intent_mint.cbor.len() / 2,
+            &user_intent_spend.hash,
+            user_intent_spend.size,
         )
-        .input_for_evaluation(&intent_spend_ref_utxo)
+        .input_for_evaluation(&spend_ref_utxo)
         .input_for_evaluation(&intent_utxo)
-        .input_for_evaluation(&account_balance_spend_ref_utxo);
+        .input_for_evaluation(&balance_spend_ref_utxo);
 
     // Spend all sender's account balance UTXOs
     for from_utxo in &from_account_utxos {
@@ -175,9 +121,9 @@ pub async fn handler(
             })
             .spending_tx_in_reference(
                 collateral.input.tx_hash.as_str(),
-                l2_ref_scripts_index::hydra_account_balance::SPEND,
+                l2_ref_scripts_index::hydra_account::SPEND,
                 &account_balance_spend.hash,
-                account_balance_spend.cbor.len() / 2,
+                account_balance_spend.size,
             )
             .input_for_evaluation(&from_utxo);
     }
@@ -220,16 +166,16 @@ pub async fn handler(
         .mint_plutus_script_v3()
         .mint(-1, &user_intent_mint.hash, "")
         .mint_redeemer_value(&WRedeemer {
-            data: user_intent_mint.redeemer(HydraUserIntentRedeemer::BurnIntent),
+            data: user_intent_mint.redeemer(HydraUserIntentRedeemer::<PlutusData>::BurnIntent),
             ex_units: Budget::default(),
         })
         .mint_tx_in_reference(
             &collateral.input.tx_hash,
             l2_ref_scripts_index::hydra_user_intent::MINT,
             &user_intent_mint.hash,
-            user_intent_mint.cbor.len() / 2,
+            user_intent_mint.size,
         )
-        .input_for_evaluation(&intent_mint_ref_utxo)
+        .input_for_evaluation(&mint_ref_utxo)
         // withdrawal logic
         .withdrawal_plutus_script_v3()
         .withdrawal(&internal_transfer_withdraw.address, 0)
@@ -239,11 +185,11 @@ pub async fn handler(
         })
         .withdrawal_tx_in_reference(
             &collateral.input.tx_hash,
-            l2_ref_scripts_index::hydra_account_balance::WITHDRAWAL,
+            l2_ref_scripts_index::hydra_account::WITHDRAWAL,
             &internal_transfer_withdraw.hash,
-            internal_transfer_withdraw.cbor.len() / 2,
+            internal_transfer_withdraw.size,
         )
-        .input_for_evaluation(&account_balance_withdrawal_ref_utxo)
+        .input_for_evaluation(&balance_withdrawal_ref_utxo)
         .tx_in_collateral(
             &collateral.input.tx_hash,
             collateral.input.output_index,

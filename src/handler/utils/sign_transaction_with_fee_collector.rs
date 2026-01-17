@@ -1,7 +1,7 @@
 use hibiki_proto::services::{SignTransactionRequest, SignTransactionResponse};
 use whisky::{calculate_tx_hash, WError, Wallet};
 
-use crate::handler::sign_transaction::check_signature_sign_tx;
+use super::sign_transaction::check_signature_sign_tx;
 
 pub fn handler(
     request: SignTransactionRequest,

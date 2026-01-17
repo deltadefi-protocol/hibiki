@@ -1,12 +1,5 @@
-use whisky::data::{ByteString, Constr0, Constr1, Constr2, Credential, PolicyId, ScriptHash};
-
-use crate::{
-    constant::{dex_oracle_nft, SCRIPTS},
-    scripts::{
-        bar::{Account, MintMasterIntent, TransferIntent, UserTradeAccount},
-        MValue, MasterIntent,
-    },
-};
+use crate::scripts::bar::{Account, UserAccount};
+use whisky::data::{ByteString, Constr0, Credential, ScriptHash};
 
 impl Account {
     pub fn new_from_keys(
@@ -25,8 +18,11 @@ impl Account {
     }
 }
 
-impl UserTradeAccount {
-    pub fn from_proto(account_info: &hibiki_proto::services::AccountInfo) -> Self {
+impl UserAccount {
+    pub fn from_proto_trade_account(
+        account_info: &hibiki_proto::services::AccountInfo,
+        account_ops_script_hash: &str,
+    ) -> Self {
         let clean_account_id = account_info.account_id.replace("-", "");
 
         let account = Account::new_from_keys(
@@ -37,32 +33,10 @@ impl UserTradeAccount {
                 account_info.is_script_operation_key,
             ),
         );
-
-        let policy_id = PolicyId::new(dex_oracle_nft());
-        let blueprint = (SCRIPTS.hydra_order_book.withdrawal)(&policy_id);
-        let script_hash = ScriptHash::new(&blueprint.hash);
-
+        let script_hash = ScriptHash::new(account_ops_script_hash);
         match account_info.account_type.as_str() {
-            "spot_account" => UserTradeAccount(Constr0::new(Box::new((account, script_hash)))),
+            "spot_account" => UserAccount::UserTradeAccount(Box::new((account, script_hash))),
             _ => panic!("Unknown account type: {}", account_info.account_type),
         }
-    }
-}
-
-impl TransferIntent {
-    pub fn new(account: UserTradeAccount, value: MValue) -> TransferIntent {
-        TransferIntent(Constr2::new(Box::new((account, value))))
-    }
-}
-
-impl MintMasterIntent {
-    pub fn new(account: UserTradeAccount, intent: TransferIntent) -> MintMasterIntent {
-        MintMasterIntent(Constr1::new(Box::new((account, intent))))
-    }
-}
-
-impl MasterIntent {
-    pub fn new(account: UserTradeAccount, intent: TransferIntent) -> MasterIntent {
-        MasterIntent(Constr1::new(Box::new((account, intent))))
     }
 }

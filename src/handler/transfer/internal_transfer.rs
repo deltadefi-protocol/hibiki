@@ -1,61 +1,54 @@
 use hibiki_proto::services::{IntentTxResponse, InternalTransferRequest};
-use whisky::{
-    calculate_tx_hash, data::PlutusDataJson, Asset, Budget, UTxO, UtxoInput, UtxoOutput, WData,
-    WError, WRedeemer,
-};
+use whisky::{calculate_tx_hash, data::PlutusDataJson, Asset, Budget, WData, WError, WRedeemer};
 
 use crate::{
     config::AppConfig,
-    constant::{dex_oracle_nft, l2_ref_scripts_index},
     scripts::{
-        hydra_user_intent_mint_minting_blueprint, hydra_user_intent_spend_spending_blueprint,
-        MasterIntent, MintMasterIntent, TransferIntent, UserTradeAccount,
+        l2_ref_scripts_index, HydraAccountIntent, HydraUserIntentDatum, HydraUserIntentRedeemer,
+        ScriptCache, UserAccount,
     },
     utils::{
-        hydra::{get_hydra_tx_builder, get_script_ref_hex},
+        hydra::get_hydra_tx_builder,
         proto::{assets_to_mvalue, from_proto_amount, from_proto_utxo},
         token::to_hydra_token,
     },
 };
 
 // Changed from async to synchronous function to avoid Send issues with Rc<T>
-pub async fn handler(request: InternalTransferRequest) -> Result<IntentTxResponse, WError> {
-    let AppConfig { app_owner_vkey, .. } = AppConfig::new();
+pub async fn handler(
+    request: InternalTransferRequest,
+    config: &AppConfig,
+    scripts: &ScriptCache,
+) -> Result<IntentTxResponse, WError> {
+    let app_owner_vkey = &config.app_owner_vkey;
+    let account_ops_script_hash = &scripts.hydra_order_book_withdrawal.hash;
+
     let collateral = from_proto_utxo(request.collateral_utxo.as_ref().unwrap());
     let empty_utxo = from_proto_utxo(request.empty_utxo.as_ref().unwrap());
     let ref_input = from_proto_utxo(request.dex_order_book_utxo.as_ref().unwrap());
     let account = request.account.unwrap();
 
     let mut tx_builder = get_hydra_tx_builder();
-    let policy_id = whisky::data::PolicyId::new(dex_oracle_nft());
-    let user_intent_mint = hydra_user_intent_mint_minting_blueprint(&policy_id);
-    let user_intent_spend = hydra_user_intent_spend_spending_blueprint(&policy_id);
+    let user_intent_mint = &scripts.user_intent_mint;
+    let user_intent_spend = &scripts.user_intent_spend;
 
-    let from_account = UserTradeAccount::from_proto(&account);
-    let to_account = UserTradeAccount::from_proto(&request.receiver_account.unwrap());
+    let from_account = UserAccount::from_proto_trade_account(&account, account_ops_script_hash);
+    let to_account = UserAccount::from_proto_trade_account(
+        &request.receiver_account.unwrap(),
+        account_ops_script_hash,
+    );
     let transfer_amount_l2 =
         assets_to_mvalue(&to_hydra_token(&from_proto_amount(&request.to_transfer)));
 
     // Create transfer intent
-    let hydra_account_intent = TransferIntent::new(to_account.clone(), transfer_amount_l2);
-    let redeemer_json = MintMasterIntent::new(from_account.clone(), hydra_account_intent.clone());
-    let datum_json = MasterIntent::new(from_account, hydra_account_intent);
-
-    let intent_script_ref_hex = Some(get_script_ref_hex(&user_intent_mint.cbor)?);
-    let intent_mint_ref_utxo = UTxO {
-        input: UtxoInput {
-            output_index: l2_ref_scripts_index::hydra_user_intent::MINT,
-            tx_hash: collateral.input.tx_hash.clone(),
-        },
-        output: UtxoOutput {
-            address: collateral.output.address.clone(),
-            amount: Vec::new(),
-            data_hash: None,
-            plutus_data: None,
-            script_ref: intent_script_ref_hex,
-            script_hash: Some(user_intent_mint.hash.clone()),
-        },
-    };
+    let hydra_account_intent =
+        HydraAccountIntent::TransferIntent(Box::new((to_account.clone(), transfer_amount_l2)));
+    let redeemer_json = HydraUserIntentRedeemer::MintMasterIntent(Box::new((
+        from_account.clone(),
+        hydra_account_intent.clone(),
+    )));
+    let datum_json =
+        HydraUserIntentDatum::MasterIntent(Box::new((from_account, hydra_account_intent)));
 
     tx_builder
         .read_only_tx_in_reference(&ref_input.input.tx_hash, ref_input.input.output_index, None)
@@ -70,9 +63,9 @@ pub async fn handler(request: InternalTransferRequest) -> Result<IntentTxRespons
             &collateral.input.tx_hash,
             l2_ref_scripts_index::hydra_user_intent::MINT,
             &user_intent_mint.hash,
-            user_intent_mint.cbor.len() / 2,
+            user_intent_mint.size,
         )
-        .input_for_evaluation(&intent_mint_ref_utxo)
+        .input_for_evaluation(&user_intent_mint.ref_utxo(&collateral)?)
         .tx_out(
             &user_intent_spend.address,
             &[Asset::new_from_str(&user_intent_mint.hash, "1")],
@@ -115,6 +108,7 @@ mod tests {
     use hibiki_proto::services::{AccountInfo, Asset, UTxO, UtxoInput, UtxoOutput};
 
     use super::*;
+    use crate::scripts::ScriptCache;
     use dotenv::dotenv;
 
     #[test]
@@ -217,7 +211,9 @@ mod tests {
             }),
         };
 
-        let result = handler(request).await;
+        let config = AppConfig::new();
+        let scripts = ScriptCache::new();
+        let result = handler(request, &config, &scripts).await;
         println!("Result: {:?}", result);
         assert!(result.is_ok());
     }
