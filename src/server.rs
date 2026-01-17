@@ -49,7 +49,7 @@ impl Hibiki for HibikiService {
         let request_result = request.into_inner();
         println!("Got a request - internal_transfer {:?}", request_result);
 
-        let reply = match place_order::handler(request_result).await {
+        let reply = match place_order::handler(request_result, &self.config, &self.scripts).await {
             Ok(value) => value,
             Err(e) => {
                 return Err(Status::failed_precondition(e.to_string()));
