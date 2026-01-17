@@ -1,5 +1,5 @@
 use whisky::data::{PlutusDataJson, PolicyId};
-use whisky::{UTxO, UtxoInput, UtxoOutput, WData, WError};
+use whisky::{Budget, UTxO, UtxoInput, UtxoOutput, WData, WError, WRedeemer};
 
 use super::bar::{
     hydra_account_spend_spending_blueprint, hydra_account_withdraw_withdrawal_blueprint,
@@ -45,8 +45,11 @@ pub struct CachedScript {
 
 impl CachedScript {
     /// Encode a redeemer value to WData
-    pub fn redeemer<R: PlutusDataJson>(&self, redeemer: R) -> WData {
-        WData::JSON(redeemer.to_json_string())
+    pub fn redeemer<R: PlutusDataJson>(&self, redeemer: R, budget: Option<Budget>) -> WRedeemer {
+        WRedeemer {
+            data: WData::JSON(redeemer.to_json_string()),
+            ex_units: budget.unwrap_or_default(),
+        }
     }
 
     ///  Get the reference UTxO for this script
@@ -67,8 +70,11 @@ pub struct CachedMintScript {
 
 impl CachedMintScript {
     /// Encode a redeemer value to WData
-    pub fn redeemer<R: PlutusDataJson>(&self, redeemer: R) -> WData {
-        WData::JSON(redeemer.to_json_string())
+    pub fn redeemer<R: PlutusDataJson>(&self, redeemer: R, budget: Option<Budget>) -> WRedeemer {
+        WRedeemer {
+            data: WData::JSON(redeemer.to_json_string()),
+            ex_units: budget.unwrap_or_default(),
+        }
     }
 
     ///  Get the reference UTxO for this script
