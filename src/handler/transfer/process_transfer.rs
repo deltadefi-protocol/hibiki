@@ -1,10 +1,7 @@
-use hibiki_proto::services::{
-    AssetList, ProcessTransferRequest, ProcessTransferResponse, UnitTxIndexMap,
-};
-use std::collections::HashMap;
+use hibiki_proto::services::{ProcessTransferRequest, ProcessTransferResponse};
 use whisky::{
     calculate_tx_hash,
-    data::{Constr, List, PlutusData, PlutusDataJson},
+    data::{ByteString, PlutusData, PlutusDataJson},
     WData, WError, Wallet,
 };
 
@@ -12,14 +9,14 @@ use crate::{
     config::{constant::all_hydra_to_l1_token_map, AppConfig},
     handler::sign_transaction::check_signature_sign_tx,
     scripts::{
-        l2_ref_scripts_index, HydraAccountOperation, HydraAccountRedeemer, HydraUserIntentRedeemer,
-        ScriptCache, UserAccount,
+        HydraAccountOperation, HydraAccountRedeemer, HydraUserIntentRedeemer, ScriptCache,
+        UserAccount,
     },
     utils::{
         hydra::get_hydra_tx_builder,
         proto::{
             extract_transfer_amount_from_intent, from_proto_balance_utxos, from_proto_utxo,
-            to_proto_amount,
+            TxIndexAssetsMap,
         },
         token::{to_hydra_token, to_l1_assets},
     },
@@ -60,12 +57,8 @@ pub async fn handler(
     let account_balance_spend = &scripts.hydra_account_spend;
     let internal_transfer_withdraw = &scripts.hydra_account_withdrawal;
 
-    let mut from_unit_tx_index_map: HashMap<String, AssetList> =
-        HashMap::with_capacity(from_updated_balance_l1.len());
-    let mut to_unit_tx_index_map: HashMap<String, AssetList> =
-        HashMap::with_capacity(to_updated_balance_l2.len());
-
-    let mut current_index = 0u32;
+    let mut from_unit_tx_index_map = TxIndexAssetsMap::new(from_updated_balance_l1.len());
+    let mut to_unit_tx_index_map = TxIndexAssetsMap::new(to_updated_balance_l2.len());
 
     // Build script reference UTxOs using cached script info
     let mint_ref_utxo = user_intent_mint.ref_utxo(&collateral)?;
@@ -87,13 +80,10 @@ pub async fn handler(
             &intent_utxo.output.address,
         )
         .tx_in_inline_datum_present()
-        .tx_in_redeemer_value(&user_intent_spend.redeemer(
-            PlutusData::Constr(Constr::new(1, Box::new(PlutusData::List(List::new(&[]))))),
-            None,
-        ))
+        .tx_in_redeemer_value(&user_intent_spend.redeemer(ByteString::new(""), None))
         .spending_tx_in_reference(
             collateral.input.tx_hash.as_str(),
-            l2_ref_scripts_index::hydra_user_intent::SPEND,
+            user_intent_spend.ref_output_index,
             &user_intent_spend.hash,
             user_intent_spend.size,
         )
@@ -117,13 +107,14 @@ pub async fn handler(
             )
             .spending_tx_in_reference(
                 collateral.input.tx_hash.as_str(),
-                l2_ref_scripts_index::hydra_account::SPEND,
+                account_balance_spend.ref_output_index,
                 &account_balance_spend.hash,
                 account_balance_spend.size,
             )
             .input_for_evaluation(&from_utxo);
     }
 
+    let mut current_index = 0u32;
     for asset in from_updated_balance_l1 {
         tx_builder
             .tx_out(
@@ -131,31 +122,18 @@ pub async fn handler(
                 &to_hydra_token(std::slice::from_ref(&asset)),
             )
             .tx_out_inline_datum_value(&WData::JSON(from_account.to_json_string()));
-
-        from_unit_tx_index_map.insert(
-            current_index.to_string(),
-            AssetList {
-                assets: to_proto_amount(std::slice::from_ref(&asset)),
-            },
-        );
+        from_unit_tx_index_map.insert(&[asset]);
         current_index += 1;
     }
 
+    to_unit_tx_index_map.set_index(current_index);
     for asset in to_updated_balance_l2 {
         tx_builder
             .tx_out(account_balance_address, std::slice::from_ref(&asset))
             .tx_out_inline_datum_value(&WData::JSON(to_account.to_json_string()));
-
         let l1_assets = to_l1_assets(std::slice::from_ref(&asset), all_hydra_to_l1_token_map())
             .map_err(WError::from_err("to_l1_assets"))?;
-
-        to_unit_tx_index_map.insert(
-            current_index.to_string(),
-            AssetList {
-                assets: to_proto_amount(&l1_assets),
-            },
-        );
-        current_index += 1;
+        to_unit_tx_index_map.insert(&l1_assets);
     }
 
     tx_builder
@@ -166,7 +144,7 @@ pub async fn handler(
         )
         .mint_tx_in_reference(
             &collateral.input.tx_hash,
-            l2_ref_scripts_index::hydra_user_intent::MINT,
+            user_intent_mint.ref_output_index,
             &user_intent_mint.hash,
             user_intent_mint.size,
         )
@@ -179,7 +157,7 @@ pub async fn handler(
         )
         .withdrawal_tx_in_reference(
             &collateral.input.tx_hash,
-            l2_ref_scripts_index::hydra_account::WITHDRAWAL,
+            internal_transfer_withdraw.ref_output_index,
             &internal_transfer_withdraw.hash,
             internal_transfer_withdraw.size,
         )
@@ -203,20 +181,8 @@ pub async fn handler(
     Ok(ProcessTransferResponse {
         signed_tx,
         tx_hash,
-        account_utxo_tx_index_unit_map: if from_unit_tx_index_map.is_empty() {
-            None
-        } else {
-            Some(UnitTxIndexMap {
-                unit_tx_index_map: from_unit_tx_index_map,
-            })
-        },
-        receiver_account_utxo_tx_index_unit_map: if to_unit_tx_index_map.is_empty() {
-            None
-        } else {
-            Some(UnitTxIndexMap {
-                unit_tx_index_map: to_unit_tx_index_map,
-            })
-        },
+        account_utxo_tx_index_unit_map: from_unit_tx_index_map.to_proto(),
+        receiver_account_utxo_tx_index_unit_map: to_unit_tx_index_map.to_proto(),
     })
 }
 

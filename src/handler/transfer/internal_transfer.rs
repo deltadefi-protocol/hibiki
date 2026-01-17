@@ -1,11 +1,12 @@
 use hibiki_proto::services::{IntentTxResponse, InternalTransferRequest};
-use whisky::{calculate_tx_hash, data::PlutusDataJson, Asset, Budget, WData, WError, WRedeemer};
+use whisky::{calculate_tx_hash, data::PlutusDataJson, Asset, WData, WError};
 
 use crate::{
     config::AppConfig,
     scripts::{
-        l2_ref_scripts_index, HydraAccountIntent, HydraUserIntentDatum, HydraUserIntentRedeemer,
-        ScriptCache, UserAccount,
+        l2_ref_scripts_index::{self},
+        HydraAccountIntent, HydraUserIntentDatum, HydraUserIntentRedeemer, ScriptCache,
+        UserAccount,
     },
     utils::{
         hydra::get_hydra_tx_builder,
@@ -43,22 +44,17 @@ pub async fn handler(
     // Create transfer intent
     let hydra_account_intent =
         HydraAccountIntent::TransferIntent(Box::new((to_account.clone(), transfer_amount_l2)));
-    let redeemer_json = HydraUserIntentRedeemer::MintMasterIntent(Box::new((
-        from_account.clone(),
-        hydra_account_intent.clone(),
-    )));
-    let datum_json =
-        HydraUserIntentDatum::MasterIntent(Box::new((from_account, hydra_account_intent)));
+    let intent = Box::new((from_account, hydra_account_intent));
 
     tx_builder
         .read_only_tx_in_reference(&ref_input.input.tx_hash, ref_input.input.output_index, None)
         .input_for_evaluation(&ref_input)
         .mint_plutus_script_v3()
         .mint(1, &user_intent_mint.hash, "")
-        .mint_redeemer_value(&WRedeemer {
-            data: WData::JSON(redeemer_json.to_json_string()),
-            ex_units: Budget::default(),
-        })
+        .mint_redeemer_value(&user_intent_mint.redeemer(
+            HydraUserIntentRedeemer::MintMasterIntent(intent.clone()),
+            None,
+        ))
         .mint_tx_in_reference(
             &collateral.input.tx_hash,
             l2_ref_scripts_index::hydra_user_intent::MINT,
@@ -70,7 +66,9 @@ pub async fn handler(
             &user_intent_spend.address,
             &[Asset::new_from_str(&user_intent_mint.hash, "1")],
         )
-        .tx_out_inline_datum_value(&WData::JSON(datum_json.to_json_string()))
+        .tx_out_inline_datum_value(&WData::JSON(
+            HydraUserIntentDatum::MasterIntent(intent).to_json_string(),
+        ))
         .tx_in(
             &empty_utxo.input.tx_hash,
             empty_utxo.input.output_index,
