@@ -4,9 +4,7 @@ use whisky::{calculate_tx_hash, data::PlutusDataJson, Asset, WData, WError};
 use crate::{
     config::AppConfig,
     scripts::{
-        l2_ref_scripts_index::{self},
-        HydraAccountIntent, HydraUserIntentDatum, HydraUserIntentRedeemer, ScriptCache,
-        UserAccount,
+        HydraAccountIntent, HydraUserIntentDatum, HydraUserIntentRedeemer, ScriptCache, UserAccount,
     },
     utils::{
         hydra::get_hydra_tx_builder,
@@ -57,7 +55,7 @@ pub async fn handler(
         ))
         .mint_tx_in_reference(
             &collateral.input.tx_hash,
-            l2_ref_scripts_index::hydra_user_intent::MINT,
+            user_intent_mint.ref_output_index,
             &user_intent_mint.hash,
             user_intent_mint.size,
         )

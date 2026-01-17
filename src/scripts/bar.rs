@@ -630,8 +630,8 @@ pub struct Order(
     pub  Constr0<
         Box<(
             ByteString,
-            Tuple,
-            Tuple,
+            Tuple<(ByteString, ByteString)>,
+            Tuple<(ByteString, ByteString)>,
             Bool,
             Int,
             Int,
