@@ -1,7 +1,7 @@
 use whisky::{
     blockfrost::utils::{normalize_plutus_script, to_script_ref, ScriptType},
     csl::{self, PlutusScript, ScriptRef},
-    OfflineTxEvaluator, TxBuilder, TxBuilderParam, WError,
+    OfflineTxEvaluator, TxBuilder, TxBuilderParam, WError, WhiskyCSL,
 };
 
 use crate::config::hydra::get_hydra_pp;
@@ -17,12 +17,14 @@ pub fn get_script_ref_hex(cbor: &str) -> Result<String, WError> {
 }
 
 pub fn get_hydra_tx_builder() -> TxBuilder {
-    let mut tx_builder = TxBuilder::new(TxBuilderParam {
+    let mut serializer = WhiskyCSL::new(None).unwrap();
+    serializer.tx_evaluation_multiplier_percentage = 150;
+    let tx_builder = TxBuilder::new(TxBuilderParam {
+        serializer: Box::new(serializer),
         evaluator: Some(Box::new(OfflineTxEvaluator::new())),
         fetcher: None,
         submitter: None,
         params: Some(get_hydra_pp()),
     });
-    tx_builder.serializer.tx_evaluation_multiplier_percentage = 150;
     tx_builder
 }

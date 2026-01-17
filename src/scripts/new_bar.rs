@@ -16,7 +16,8 @@ use whisky::{
 };
 
 use whisky::data::{
-    Address, AssetName, Bool, ByteString, Constr0, ConstrFields, Credential, Int, List, Map,
+    Address, AssetName, Bool, ByteArray, ByteString, Constr0, Constr1, Constr2, Constr3, Constr4,
+    Constr5, Constr6, Constr7, Constr8, Constr9, ConstrFields, Credential, Int, List, Map,
     OutputReference, PlutusData, PlutusDataJson, PolicyId, ScriptHash, Tuple, VerificationKeyHash,
 };
 
@@ -752,15 +753,15 @@ pub enum HydraTokensRedeemer {
 }
 
 #[derive(Debug, Clone, ConstrEnum)]
-pub enum HydraUserIntentDatum<T: PlutusDataJson = PlutusData> {
-    TradeIntent(Box<(UserAccount, T)>),
-    MasterIntent(Box<(UserAccount, T)>),
+pub enum HydraUserIntentDatum {
+    TradeIntent(Box<(UserAccount, PlutusData)>),
+    MasterIntent(Box<(UserAccount, PlutusData)>),
 }
 
 #[derive(Debug, Clone, ConstrEnum)]
-pub enum HydraUserIntentRedeemer<T: PlutusDataJson = PlutusData> {
-    MintTradeIntent(Box<(UserAccount, T)>),
-    MintMasterIntent(Box<(UserAccount, T)>),
+pub enum HydraUserIntentRedeemer {
+    MintTradeIntent(Box<(UserAccount, PlutusData)>),
+    MintMasterIntent(Box<(UserAccount, PlutusData)>),
     BurnIntent,
 }
 

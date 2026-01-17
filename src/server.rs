@@ -4,12 +4,14 @@ use std::sync::Arc;
 use whisky::{calculate_tx_hash, Wallet};
 
 use hibiki::{
+    config::AppConfig,
     grpc_metrics_interceptor::MetricsLayer,
     handler::{
-        internal_transfer, process_transfer, serialize_transfer_intent_datum, sign_transaction,
-        sign_transaction_with_fee_collector,
+        internal_transfer, place_order, process_transfer, same_account_transferal,
+        serialize_transfer_intent_datum, sign_transaction, sign_transaction_with_fee_collector,
     },
     metrics, metrics_server,
+    scripts::ScriptCache,
     services::{
         self,
         hibiki_server::{Hibiki, HibikiServer},
@@ -23,6 +25,8 @@ use tonic::{transport::Server, Request, Response, Status};
 pub struct HibikiService {
     pub app_owner_wallet: Arc<Wallet>,
     pub fee_collector_wallet: Arc<Wallet>,
+    pub config: Arc<AppConfig>,
+    pub scripts: Arc<ScriptCache>,
 }
 
 #[tonic::async_trait]
@@ -37,6 +41,24 @@ impl Hibiki for HibikiService {
         Ok(Response::new(reply))
     }
 
+    // Trade
+    async fn place_order(
+        &self,
+        request: Request<services::PlaceOrderRequest>,
+    ) -> Result<Response<services::IntentTxResponse>, Status> {
+        let request_result = request.into_inner();
+        println!("Got a request - internal_transfer {:?}", request_result);
+
+        let reply = match place_order::handler(request_result).await {
+            Ok(value) => value,
+            Err(e) => {
+                return Err(Status::failed_precondition(e.to_string()));
+            }
+        };
+        Ok(Response::new(reply))
+    }
+
+    // Transfer
     async fn internal_transfer(
         &self,
         request: Request<services::InternalTransferRequest>,
@@ -44,12 +66,13 @@ impl Hibiki for HibikiService {
         let request_result = request.into_inner();
         println!("Got a request - internal_transfer {:?}", request_result);
 
-        let reply = match internal_transfer::handler(request_result).await {
-            Ok(value) => value,
-            Err(e) => {
-                return Err(Status::failed_precondition(e.to_string()));
-            }
-        };
+        let reply =
+            match internal_transfer::handler(request_result, &self.config, &self.scripts).await {
+                Ok(value) => value,
+                Err(e) => {
+                    return Err(Status::failed_precondition(e.to_string()));
+                }
+            };
         Ok(Response::new(reply))
     }
 
@@ -59,7 +82,14 @@ impl Hibiki for HibikiService {
     ) -> Result<Response<services::ProcessTransferResponse>, Status> {
         let request_result = request.into_inner();
         println!("Got a request - process_transfer {:?}", request_result);
-        let reply = match process_transfer::handler(request_result, &self.app_owner_wallet).await {
+        let reply = match process_transfer::handler(
+            request_result,
+            &self.app_owner_wallet,
+            &self.config,
+            &self.scripts,
+        )
+        .await
+        {
             Ok(value) => value,
             Err(e) => {
                 return Err(Status::failed_precondition(e.to_string()));
@@ -68,13 +98,36 @@ impl Hibiki for HibikiService {
         Ok(Response::new(reply))
     }
 
+    async fn same_account_transferal(
+        &self,
+        request: Request<services::SameAccountTransferalRequest>,
+    ) -> Result<Response<services::SameAccountTransferalResponse>, Status> {
+        let request_result = request.into_inner();
+        println!("Got a request - process_transfer {:?}", request_result);
+        let reply = match same_account_transferal::handler(
+            request_result,
+            &self.app_owner_wallet,
+            &self.config,
+            &self.scripts,
+        )
+        .await
+        {
+            Ok(value) => value,
+            Err(e) => {
+                return Err(Status::failed_precondition(e.to_string()));
+            }
+        };
+        Ok(Response::new(reply))
+    }
+
+    // Utils
     async fn serialize_transferal_intent_datum(
         &self,
         request: Request<services::SerializeTransferalIntentDatumRequest>,
     ) -> Result<Response<services::SerializeDatumResponse>, Status> {
         println!("Got a request - serialize_transferal_intent_datum");
         let request_result = request.into_inner();
-        let reply = match serialize_transfer_intent_datum::handler(request_result) {
+        let reply = match serialize_transfer_intent_datum::handler(request_result, &self.scripts) {
             Ok(value) => value,
             Err(e) => {
                 return Err(Status::failed_precondition(e.to_string()));
@@ -153,9 +206,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .expect("METRICS_PORT must be a valid port number");
 
     let grpc_addr = format!("0.0.0.0:{}", grpc_port).parse()?;
+
+    // Initialize config and scripts once at startup
+    let config = Arc::new(AppConfig::new());
+    let scripts = Arc::new(ScriptCache::new());
+
     let transactions = HibikiService {
         app_owner_wallet: Arc::new(get_app_owner_wallet()),
         fee_collector_wallet: Arc::new(get_fee_collector_wallet()),
+        config,
+        scripts,
     };
 
     println!("gRPC Server listening on port {}...", grpc_port);
