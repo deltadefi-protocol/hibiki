@@ -1,5 +1,9 @@
 use hibiki_proto::services::{SameAccountTransferalRequest, SameAccountTransferalResponse};
-use whisky::{calculate_tx_hash, data::PlutusDataJson, WData, WError, Wallet};
+use whisky::{
+    calculate_tx_hash,
+    data::{PlutusData, PlutusDataJson},
+    WData, WError, Wallet,
+};
 
 use crate::{
     config::AppConfig,
@@ -61,9 +65,10 @@ pub async fn handler(
                 &utxo.output.address,
             )
             .tx_in_inline_datum_present()
-            .tx_in_redeemer_value(
-                &hydra_account_spend.redeemer(HydraAccountRedeemer::HydraAccountOperate, None),
-            )
+            .tx_in_redeemer_value(&hydra_account_spend.redeemer(
+                HydraAccountRedeemer::<PlutusData>::HydraAccountOperate,
+                None,
+            ))
             .spending_tx_in_reference(
                 &collateral.input.tx_hash,
                 scripts.hydra_account_spend.ref_output_index,

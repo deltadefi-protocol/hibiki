@@ -14,7 +14,7 @@ tokio = { version = "1.39.3", features = ["full"] }
 serde_json = "1.0.111"
 dotenv = "0.15.0"
 async-trait = "0.1.79"
-whisky = "1.0.20"
+whisky = "1.0.21"
 # whisky = { path = "../../../sidan/whisky/packages/whisky" }
 # hibiki-proto = { git = "https://github.com/deltadefi-protocol/deltadefi-schema.git", tag = "v1.4.4-beta-5", dir = "proto/hibiki" }
 hibiki-proto = { path = "../deltadefi-schema/proto/hibiki"}
