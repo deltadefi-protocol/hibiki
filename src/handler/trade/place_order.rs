@@ -51,7 +51,7 @@ pub async fn handler(
     let user_intent_mint = &scripts.user_intent_mint;
     let user_intent_spend = &scripts.user_intent_spend;
 
-    // Create transfer intent
+    // Create place order intent
     let order_type = OrderType::try_from(order_type).unwrap_or(OrderType::Limit);
     let order_datum = to_order_datum(
         &order_id,
@@ -78,7 +78,7 @@ pub async fn handler(
         .mint_plutus_script_v3()
         .mint(1, &user_intent_mint.hash, "")
         .mint_redeemer_value(&user_intent_mint.redeemer(
-            HydraUserIntentRedeemer::MintMasterIntent(intent.clone()),
+            HydraUserIntentRedeemer::MintTradeIntent(intent.clone()),
             None,
         ))
         .mint_tx_in_reference(
@@ -93,7 +93,7 @@ pub async fn handler(
             &[Asset::new_from_str(&user_intent_mint.hash, "1")],
         )
         .tx_out_inline_datum_value(&WData::JSON(
-            HydraUserIntentDatum::MasterIntent(intent).to_json_string(),
+            HydraUserIntentDatum::TradeIntent(intent).to_json_string(),
         ))
         .tx_in(
             &empty_utxo.input.tx_hash,
@@ -104,7 +104,7 @@ pub async fn handler(
         .input_for_evaluation(&empty_utxo)
         .tx_out(&empty_utxo.output.address, &empty_utxo.output.amount)
         .required_signer_hash(&app_owner_vkey)
-        .required_signer_hash(&account.master_key)
+        .required_signer_hash(&account.operation_key)
         .tx_in_collateral(
             &collateral.input.tx_hash,
             collateral.input.output_index,

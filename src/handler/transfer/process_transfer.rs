@@ -102,9 +102,10 @@ pub async fn handler(
                 &from_utxo.output.address,
             )
             .tx_in_inline_datum_present()
-            .tx_in_redeemer_value(
-                &account_balance_spend.redeemer(HydraAccountRedeemer::HydraAccountOperate, None),
-            )
+            .tx_in_redeemer_value(&account_balance_spend.redeemer(
+                HydraAccountRedeemer::<PlutusData>::HydraAccountOperate,
+                None,
+            ))
             .spending_tx_in_reference(
                 collateral.input.tx_hash.as_str(),
                 account_balance_spend.ref_output_index,

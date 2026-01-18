@@ -7,7 +7,7 @@ use hibiki::{
     config::AppConfig,
     grpc_metrics_interceptor::MetricsLayer,
     handler::{
-        internal_transfer, place_order, process_transfer, same_account_transferal,
+        internal_transfer, place_order, process_order, process_transfer, same_account_transferal,
         serialize_transfer_intent_datum, sign_transaction, sign_transaction_with_fee_collector,
     },
     metrics, metrics_server,
@@ -47,9 +47,32 @@ impl Hibiki for HibikiService {
         request: Request<services::PlaceOrderRequest>,
     ) -> Result<Response<services::IntentTxResponse>, Status> {
         let request_result = request.into_inner();
-        println!("Got a request - internal_transfer {:?}", request_result);
+        println!("Got a request - place_order {:?}", request_result);
 
         let reply = match place_order::handler(request_result, &self.config, &self.scripts).await {
+            Ok(value) => value,
+            Err(e) => {
+                return Err(Status::failed_precondition(e.to_string()));
+            }
+        };
+        Ok(Response::new(reply))
+    }
+
+    async fn process_order(
+        &self,
+        request: Request<services::ProcessOrderRequest>,
+    ) -> Result<Response<services::ProcessOrderResponse>, Status> {
+        let request_result = request.into_inner();
+        println!("Got a request - process_order {:?}", request_result);
+
+        let reply = match process_order::handler(
+            request_result,
+            &self.app_owner_wallet,
+            &self.config,
+            &self.scripts,
+        )
+        .await
+        {
             Ok(value) => value,
             Err(e) => {
                 return Err(Status::failed_precondition(e.to_string()));

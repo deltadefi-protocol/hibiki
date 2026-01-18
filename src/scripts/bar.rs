@@ -698,8 +698,8 @@ pub enum EmergencyWithdrawalRequestRedeemer {
 pub struct EmergencyWithdrawalRequestDatum(pub Constr0<Box<(UserAccount, MValue, Int)>>);
 
 #[derive(Debug, Clone, ConstrEnum)]
-pub enum HydraAccountRedeemer {
-    HydraAccountTrade(PlutusData),
+pub enum HydraAccountRedeemer<T: PlutusDataJson = PlutusData> {
+    HydraAccountTrade(T),
     HydraAccountOperate,
     HydraAccountSpamPreventionWithdraw,
 }
