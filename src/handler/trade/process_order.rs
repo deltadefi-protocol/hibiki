@@ -82,14 +82,14 @@ pub async fn handler(
         .tx_out(&hydra_order_book_spend.address, &order_value)
         .tx_out_inline_datum_value(&WData::JSON(order.to_json_string()));
 
-    for from_utxo in &account_utxos {
+    for account_utxo in &account_utxos {
         tx_builder
             .spending_plutus_script_v3()
             .tx_in(
-                &from_utxo.input.tx_hash,
-                from_utxo.input.output_index,
-                &from_utxo.output.amount,
-                &from_utxo.output.address,
+                &account_utxo.input.tx_hash,
+                account_utxo.input.output_index,
+                &account_utxo.output.amount,
+                &account_utxo.output.address,
             )
             .tx_in_inline_datum_present()
             .tx_in_redeemer_value(&hydra_account_spend.redeemer(
@@ -102,7 +102,7 @@ pub async fn handler(
                 &hydra_account_spend.hash,
                 hydra_account_spend.size,
             )
-            .input_for_evaluation(&from_utxo);
+            .input_for_evaluation(&account_utxo);
     }
 
     unit_tx_index_map.set_index(1);
