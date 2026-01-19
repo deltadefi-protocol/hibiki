@@ -16,8 +16,8 @@ dotenv = "0.15.0"
 async-trait = "0.1.79"
 whisky = "1.0.22"
 # whisky = { path = "../../../sidan/whisky/packages/whisky" }
-# hibiki-proto = { git = "https://github.com/deltadefi-protocol/deltadefi-schema.git", tag = "v1.4.4-beta-5", dir = "proto/hibiki" }
-hibiki-proto = { path = "../deltadefi-schema/proto/hibiki"}
+hibiki-proto = { git = "https://github.com/deltadefi-protocol/deltadefi-schema.git", tag = "v1.4.17-beta", dir = "proto/hibiki" }
+# hibiki-proto = { path = "../deltadefi-schema/proto/hibiki"}
 reqwest = { version = "0.11.22", features = ["json", "blocking"] }
 serde = { version = "1.0.219", features = ["derive"] }
 base64 = "0.21.5"
