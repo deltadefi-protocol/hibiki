@@ -55,17 +55,6 @@ pub async fn handler(
     let hydra_account_spend = &scripts.hydra_account_spend;
     let hydra_order_book_spend = &scripts.hydra_order_book_spend;
     let hydra_order_book_withdrawal = &scripts.hydra_order_book_withdrawal;
-    println!("user_intent_mint hash: {}", user_intent_mint.hash);
-    println!("user_intent_spend hash: {}", user_intent_spend.hash);
-    println!("hydra_account_spend hash: {}", hydra_account_spend.hash);
-    println!(
-        "hydra_order_book_spend hash: {}",
-        hydra_order_book_spend.hash
-    );
-    println!(
-        "hydra_order_book_withdrawal hash: {}",
-        hydra_order_book_withdrawal.hash
-    );
 
     let order_redeemer = HydraOrderBookRedeemer::PlaceOrder(user_account.clone());
     let intent_datum = HydraUserIntentDatum::<HydraOrderBookIntent>::from_cbor(
