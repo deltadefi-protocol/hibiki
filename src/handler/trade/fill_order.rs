@@ -9,7 +9,7 @@ use whisky::{
 
 use crate::{
     config::AppConfig,
-    scripts::{HydraOrderBookRedeemer, Order, ScriptCache, UserAccount},
+    scripts::{HydraOrderBookRedeemer, Order, OrderType, ScriptCache, UserAccount},
     utils::{
         hydra::get_hydra_tx_builder,
         proto::{
@@ -84,8 +84,11 @@ pub async fn handler(
         // Create new order if partially filled
         if order.updated_order_size > 0 {
             let input_order = Order::from_cbor(&order_utxo.output.plutus_data.as_ref().unwrap())?;
-            let updated_order = input_order
-                .update_order(order.updated_order_size, order.updated_price_times_one_tri);
+            let updated_order = input_order.update_order(
+                order.updated_order_size,
+                order.updated_price_times_one_tri,
+                OrderType::LimitOrder,
+            );
             tx_builder
                 .tx_out(
                     &hydra_order_book_spend.address,
