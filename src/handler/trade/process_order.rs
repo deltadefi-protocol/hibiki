@@ -2,13 +2,13 @@ use hibiki_proto::services::{ProcessOrderRequest, ProcessOrderResponse};
 use whisky::{
     calculate_tx_hash,
     data::{ByteString, PlutusData, PlutusDataJson},
-    WData, WError, Wallet,
+    PlutusDataCbor, WData, WError, Wallet,
 };
 
 use crate::{
     config::AppConfig,
     scripts::{
-        HydraAccountRedeemer, HydraOrderBookIntent, HydraOrderBookRedeemer,
+        HydraAccountRedeemer, HydraOrderBookIntent, HydraOrderBookRedeemer, HydraUserIntentDatum,
         HydraUserIntentRedeemer, ScriptCache, UserAccount,
     },
     utils::{
@@ -57,7 +57,7 @@ pub async fn handler(
     let hydra_order_book_withdrawal = &scripts.hydra_order_book_withdrawal;
 
     let order_redeemer = HydraOrderBookRedeemer::PlaceOrder(user_account.clone());
-    let intent_datum = HydraOrderBookIntent::from_json_string(
+    let intent_datum = HydraUserIntentDatum::<HydraOrderBookIntent>::from_cbor(
         &intent_utxo
             .output
             .plutus_data
@@ -67,16 +67,7 @@ pub async fn handler(
                 "failed to parse plutus_data from intent_utxo",
             ))?,
     )?;
-
-    let (order, _) = match intent_datum {
-        HydraOrderBookIntent::PlaceOrderIntent(boxed) => *boxed,
-        _ => {
-            return Err(WError::new(
-                "process_order - intent_datum",
-                "expected PlaceOrderIntent datum",
-            ))
-        }
-    };
+    let order = intent_datum.get_order()?;
 
     tx_builder
         .tx_out(&hydra_order_book_spend.address, &order_value)
