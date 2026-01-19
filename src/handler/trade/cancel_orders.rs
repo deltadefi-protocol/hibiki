@@ -70,7 +70,6 @@ pub async fn handler(
             .input_for_evaluation(&order_utxo);
     }
 
-    unit_tx_index_map.set_index(1);
     for asset in updated_balance_l1 {
         tx_builder
             .tx_out(

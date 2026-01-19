@@ -12,7 +12,7 @@ pub struct OrderInput {
 
 pub fn from_proto_order(proto_order: &hibiki_proto::services::Order) -> Result<OrderInput, WError> {
     Ok(OrderInput {
-        order_id: proto_order.order_id.clone(),
+        order_id: proto_order.order_id.replace("-", ""),
         order_utxo: from_proto_utxo(
             proto_order
                 .order_utxo
