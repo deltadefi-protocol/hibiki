@@ -11,7 +11,7 @@ use crate::{
         hydra::get_hydra_tx_builder,
         order::to_order_datum,
         proto::{assets_to_mvalue, from_proto_amount, from_proto_utxo},
-        token::to_hydra_token,
+        token::{to_hydra_token, to_hydra_unit},
     },
 };
 
@@ -55,8 +55,8 @@ pub async fn handler(
     let order_type = OrderType::try_from(order_type).unwrap_or(OrderType::Limit);
     let order_datum = to_order_datum(
         &order_id,
-        &base_token_unit,
-        &quote_token_unit,
+        &to_hydra_unit(&base_token_unit),
+        &to_hydra_unit(&quote_token_unit),
         is_buy,
         list_price_times_one_tri,
         order_size,
