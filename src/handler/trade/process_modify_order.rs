@@ -132,6 +132,7 @@ pub async fn handler(
     }
 
     tx_builder
+        .input_for_evaluation(&hydra_account_spend.ref_utxo(&collateral)?)
         // reference oracle utxo
         .read_only_tx_in_reference(&ref_input.input.tx_hash, ref_input.input.output_index, None)
         .input_for_evaluation(&ref_input)
