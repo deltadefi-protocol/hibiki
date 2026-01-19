@@ -57,8 +57,20 @@ pub async fn handler(
 
     let order_redeemer =
         HydraOrderBookRedeemer::FillOrder(ByteString::new(&taker_order_id.replace("-", "")));
+    println!(
+        "[FILL_ORDER] Starting fill order build for taker_order_id: {}",
+        taker_order_id
+    );
+    println!("[FILL_ORDER] Total orders to process: {}", orders.len());
+
     for order in &orders {
         let order_utxo = &order.order_utxo;
+        // Log input being consumed
+        println!(
+            "[FILL_ORDER] Input order UTXO: {}#{} for order_id: {}",
+            order_utxo.input.tx_hash, order_utxo.input.output_index, order.order_id
+        );
+
         tx_builder
             .spending_plutus_script_v3()
             .tx_in(
@@ -78,6 +90,10 @@ pub async fn handler(
             .input_for_evaluation(&order_utxo);
         // if fully filled -> skip
         if order.updated_order_size == 0 {
+            println!(
+                "[FILL_ORDER] Order {} fully filled, no output created",
+                order.order_id
+            );
             continue;
         }
 
@@ -95,10 +111,23 @@ pub async fn handler(
                     &to_hydra_token(&order.updated_order_value_l1),
                 )
                 .tx_out_inline_datum_value(&WData::JSON(updated_order.to_json_string()));
+            println!(
+                "[FILL_ORDER] Partial order output at tx_index: {} for order_id: {}",
+                current_index, order.order_id
+            );
             hydra_order_utxo_tx_index_map.add(&order.order_id);
             current_index += 1;
         }
     }
+
+    println!(
+        "[FILL_ORDER] Account balance outputs start at tx_index: {}",
+        current_index
+    );
+    println!(
+        "[FILL_ORDER] Total new_balance_outputs to process: {}",
+        new_balance_outputs.len()
+    );
 
     for new_balance_output in &new_balance_outputs {
         let mut tx_index_assets_map = TxIndexAssetsMap::default();
@@ -106,6 +135,14 @@ pub async fn handler(
         let account_info = new_balance_output.account.as_ref().unwrap();
         let account = UserAccount::from_proto_trade_account(&account_info, account_ops_script_hash);
         let new_balance_assets_l1 = from_proto_amount(&new_balance_output.balance_l1);
+
+        println!(
+            "[FILL_ORDER] Processing account_id: {} with {} assets, starting at tx_index: {}",
+            account_info.account_id,
+            new_balance_assets_l1.len(),
+            current_index
+        );
+
         for asset_l1 in new_balance_assets_l1 {
             tx_builder
                 .tx_out(
@@ -113,11 +150,21 @@ pub async fn handler(
                     &to_hydra_token(&[asset_l1.clone()]),
                 )
                 .tx_out_inline_datum_value(&WData::JSON(account.to_json_string()));
+
+            println!(
+                "[FILL_ORDER] Account balance tx_index: {} for account_id: {} asset: {} qty: {}",
+                current_index, account_info.account_id, asset_l1.unit(), asset_l1.quantity()
+            );
+
             tx_index_assets_map.insert(&[asset_l1]);
             current_index += 1;
         }
 
         if let Some(proto) = tx_index_assets_map.to_proto() {
+            println!(
+                "[FILL_ORDER] Created tx_index_assets_map for account_id: {}: {:?}",
+                account_info.account_id, proto
+            );
             hydra_account_balance_tx_index_unit_map.insert(account_info.account_id.clone(), proto);
         }
     }
@@ -154,10 +201,23 @@ pub async fn handler(
     let tx_hash = calculate_tx_hash(&tx_hex)?;
     let signed_tx = app_owner_wallet.sign_tx(&tx_hex)?;
 
+    let hydra_order_utxo_tx_index_map_proto = hydra_order_utxo_tx_index_map.to_proto();
+
+    println!("[FILL_ORDER] Built tx_hex length: {}", tx_hex.len());
+    println!("[FILL_ORDER] Calculated tx_hash: {}", tx_hash);
+    println!(
+        "[FILL_ORDER] hydra_order_utxo_tx_index_map: {:?}",
+        hydra_order_utxo_tx_index_map_proto
+    );
+    println!(
+        "[FILL_ORDER] hydra_account_balance_tx_index_unit_map: {:?}",
+        hydra_account_balance_tx_index_unit_map
+    );
+
     Ok(FillOrderResponse {
         signed_tx,
         tx_hash,
-        hydra_order_utxo_tx_index_map: hydra_order_utxo_tx_index_map.to_proto(),
+        hydra_order_utxo_tx_index_map: hydra_order_utxo_tx_index_map_proto,
         hydra_account_balance_tx_index_unit_map,
     })
 }
