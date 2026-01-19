@@ -7,9 +7,9 @@ use hibiki::{
     config::AppConfig,
     grpc_metrics_interceptor::MetricsLayer,
     handler::{
-        cancel_orders, internal_transfer, place_order, process_order, process_transfer,
-        same_account_transferal, serialize_transfer_intent_datum, sign_transaction,
-        sign_transaction_with_fee_collector,
+        cancel_orders, internal_transfer, modify_order, place_order, process_modify_order,
+        process_order, process_transfer, same_account_transferal, serialize_transfer_intent_datum,
+        sign_transaction, sign_transaction_with_fee_collector,
     },
     metrics, metrics_server,
     scripts::ScriptCache,
@@ -90,6 +90,45 @@ impl Hibiki for HibikiService {
         println!("Got a request - cancel_orders {:?}", request_result);
 
         let reply = match cancel_orders::handler(
+            request_result,
+            &self.app_owner_wallet,
+            &self.config,
+            &self.scripts,
+        )
+        .await
+        {
+            Ok(value) => value,
+            Err(e) => {
+                return Err(Status::failed_precondition(e.to_string()));
+            }
+        };
+        Ok(Response::new(reply))
+    }
+
+    async fn modify_order(
+        &self,
+        request: Request<services::ModifyOrderRequest>,
+    ) -> Result<Response<services::IntentTxResponse>, Status> {
+        let request_result = request.into_inner();
+        println!("Got a request - place_order {:?}", request_result);
+
+        let reply = match modify_order::handler(request_result, &self.config, &self.scripts).await {
+            Ok(value) => value,
+            Err(e) => {
+                return Err(Status::failed_precondition(e.to_string()));
+            }
+        };
+        Ok(Response::new(reply))
+    }
+
+    async fn process_modify_order(
+        &self,
+        request: Request<services::ProcessModifyOrderRequest>,
+    ) -> Result<Response<services::ProcessModifyOrderResponse>, Status> {
+        let request_result = request.into_inner();
+        println!("Got a request - process_modify_order {:?}", request_result);
+
+        let reply = match process_modify_order::handler(
             request_result,
             &self.app_owner_wallet,
             &self.config,

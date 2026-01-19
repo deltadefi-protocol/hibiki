@@ -54,14 +54,28 @@ impl HydraUserIntentDatum<HydraAccountIntent> {
 }
 
 impl HydraUserIntentDatum<HydraOrderBookIntent> {
-    pub fn get_order(&self) -> Result<&Order, WError> {
+    pub fn get_placed_order(&self) -> Result<&Order, WError> {
         let intent_datum = self.get_trade_intent()?;
         let (order, _) = match intent_datum {
             HydraOrderBookIntent::PlaceOrderIntent(boxed) => boxed.as_ref(),
             _ => {
                 return Err(WError::new(
-                    "get_order - intent_datum",
+                    "get_placed_order - intent_datum",
                     "expected PlaceOrderIntent datum",
+                ))
+            }
+        };
+        Ok(order)
+    }
+
+    pub fn get_modified_order(&self) -> Result<&Order, WError> {
+        let intent_datum = self.get_trade_intent()?;
+        let (order, _) = match intent_datum {
+            HydraOrderBookIntent::ModifyOrderIntent(boxed) => boxed.as_ref(),
+            _ => {
+                return Err(WError::new(
+                    "get_modified_order - intent_datum",
+                    "expected ModifyOrderIntent datum",
                 ))
             }
         };
