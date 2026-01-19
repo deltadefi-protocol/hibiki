@@ -107,7 +107,7 @@ pub async fn handler(
                     &to_hydra_token(&[asset_l1.clone()]),
                 )
                 .tx_out_inline_datum_value(&WData::JSON(account.to_json_string()));
-            tx_index_assets_map.insert(&to_hydra_token(&[asset_l1]));
+            tx_index_assets_map.insert(&[asset_l1]);
             current_index += 1;
         }
 
