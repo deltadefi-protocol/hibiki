@@ -2,22 +2,19 @@ use hibiki_proto::services::{ProcessTransferRequest, ProcessTransferResponse};
 use whisky::{
     calculate_tx_hash,
     data::{ByteString, PlutusData, PlutusDataJson},
-    WData, WError, Wallet,
+    PlutusDataCbor, WData, WError, Wallet,
 };
 
 use crate::{
     config::{constant::all_hydra_to_l1_token_map, AppConfig},
     handler::sign_transaction::check_signature_sign_tx,
     scripts::{
-        HydraAccountOperation, HydraAccountRedeemer, HydraUserIntentRedeemer, ScriptCache,
-        UserAccount,
+        HydraAccountIntent, HydraAccountOperation, HydraAccountRedeemer, HydraUserIntentDatum,
+        HydraUserIntentRedeemer, ScriptCache, UserAccount,
     },
     utils::{
         hydra::get_hydra_tx_builder,
-        proto::{
-            extract_transfer_amount_from_intent, from_proto_balance_utxos, from_proto_utxo,
-            TxIndexAssetsMap,
-        },
+        proto::{from_proto_balance_utxos, from_proto_utxo, TxIndexAssetsMap},
         token::{to_hydra_token, to_l1_assets},
     },
 };
@@ -47,7 +44,13 @@ pub async fn handler(
     let (from_updated_balance_l1, from_account_utxos) =
         from_proto_balance_utxos(request.account_balance_utxos.as_ref().unwrap());
 
-    let to_updated_balance_l2 = extract_transfer_amount_from_intent(&intent_utxo)?;
+    let intent_datum =
+        HydraUserIntentDatum::<HydraAccountIntent>::from_cbor(
+            &intent_utxo.output.plutus_data.as_ref().ok_or_else(|| {
+                WError::new("process_transfer", "Missing plutus_data in intent_utxo")
+            })?,
+        )?;
+    let to_updated_balance_l2 = intent_datum.get_transfer_amount()?;
 
     // For outputs, we need one UTXO address - use the first sender's UTXO address as template
     let account_balance_address = &from_account_utxos[0].output.address;
