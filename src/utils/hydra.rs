@@ -17,7 +17,7 @@ pub fn get_script_ref_hex(cbor: &str) -> Result<String, WError> {
 }
 
 pub fn get_hydra_tx_builder() -> TxBuilder {
-    let mut serializer = WhiskyCSL::new(None).unwrap();
+    let mut serializer = WhiskyCSL::new(Some(get_hydra_pp())).unwrap();
     serializer.tx_evaluation_multiplier_percentage = 150;
     let tx_builder = TxBuilder::new(TxBuilderParam {
         serializer: Box::new(serializer),

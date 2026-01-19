@@ -84,9 +84,11 @@ pub async fn handler(
             &collateral.output.address,
         )
         .input_for_evaluation(&collateral)
-        .change_address(&request.address)
-        .complete(None)
-        .await?;
+        .change_address(&request.address);
+
+    println!("tx builder: {:?}", tx_builder.mint_item);
+
+    tx_builder.complete(None).await?;
 
     let tx_hex = tx_builder.tx_hex();
     let tx_hash = calculate_tx_hash(&tx_hex)?;
