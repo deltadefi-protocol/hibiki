@@ -30,7 +30,7 @@ pub fn to_order_datum(
     };
 
     Order::from(
-        &order_id,
+        &order_id.replace("-", ""),
         base_tuple,
         quote_tuple,
         is_buy,

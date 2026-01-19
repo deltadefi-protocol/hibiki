@@ -4433,9 +4433,7 @@ dependencies = [
 
 [[package]]
 name = "whisky"
-version = "1.0.22"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "487982c4262e97d7f6ec1c4d2714fe7b5a3ecb0ee176ca23e5b7344c471f19f4"
+version = "1.0.23"
 dependencies = [
  "async-trait",
  "cryptoxide",
@@ -4465,9 +4463,7 @@ dependencies = [
 
 [[package]]
 name = "whisky-common"
-version = "1.0.22"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9d9123369bd859405162b67d02bfa0fb96a02c5219e20c896fd03fb2f1578b09"
+version = "1.0.23"
 dependencies = [
  "async-trait",
  "hex",
@@ -4480,9 +4476,7 @@ dependencies = [
 
 [[package]]
 name = "whisky-csl"
-version = "1.0.22"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "45cab7dcc5daefefcb55276b3186f917c4076f9d67fcb765044f645118092eb4"
+version = "1.0.23"
 dependencies = [
  "cardano-serialization-lib",
  "cquisitor-lib",
@@ -4508,9 +4502,7 @@ dependencies = [
 
 [[package]]
 name = "whisky-macros"
-version = "1.0.22"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a11806e8e2b12650d15963c20a7415c8f7c3b661b882003b1286fc42614050b9"
+version = "1.0.23"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -4519,9 +4511,7 @@ dependencies = [
 
 [[package]]
 name = "whisky-pallas"
-version = "1.0.22"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a999b94e0bb3094dd02ae671cb366dc2c9bf34fa52fe5a14a81edf973ee26145"
+version = "1.0.23"
 dependencies = [
  "bech32 0.11.1",
  "hex",
@@ -4534,9 +4524,7 @@ dependencies = [
 
 [[package]]
 name = "whisky-provider"
-version = "1.0.22"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0e30be65d90e371bcdf60b4bf7264ee8fb30dbb4277ba282a691a0fb3a07dc48"
+version = "1.0.23"
 dependencies = [
  "async-trait",
  "futures",
@@ -4552,9 +4540,7 @@ dependencies = [
 
 [[package]]
 name = "whisky-wallet"
-version = "1.0.22"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "535aa7eed291edca549b72666088e7cb6cd9e9d98712f5adef533372d9c7e973"
+version = "1.0.23"
 dependencies = [
  "aes-gcm",
  "base64 0.22.1",
