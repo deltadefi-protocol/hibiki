@@ -1,4 +1,4 @@
-use hibiki_proto::services::{ProcessOrderRequest, ProcessOrderResponse};
+use hibiki_proto::services::{ProcessModifyOrderRequest, ProcessModifyOrderResponse};
 use whisky::{
     calculate_tx_hash,
     data::{ByteString, PlutusData, PlutusDataJson},
@@ -13,24 +13,28 @@ use crate::{
     },
     utils::{
         hydra::get_hydra_tx_builder,
-        proto::{from_proto_amount, from_proto_balance_utxos, from_proto_utxo, TxIndexAssetsMap},
+        proto::{
+            from_proto_amount, from_proto_balance_utxos, from_proto_order, from_proto_utxo,
+            TxIndexAssetsMap,
+        },
         token::to_hydra_token,
     },
 };
 
 // Changed from async to synchronous function to avoid Send issues with Rc<T>
 pub async fn handler(
-    request: ProcessOrderRequest,
+    request: ProcessModifyOrderRequest,
     app_owner_wallet: &Wallet,
     config: &AppConfig,
     scripts: &ScriptCache,
-) -> Result<ProcessOrderResponse, WError> {
-    let ProcessOrderRequest {
+) -> Result<ProcessModifyOrderResponse, WError> {
+    let ProcessModifyOrderRequest {
         address,
         account,
         collateral_utxo,
         order_intent_utxo,
         order_value_l1,
+        existing_order,
         account_balance_utxos,
         dex_order_book_utxo,
     } = request;
@@ -44,6 +48,7 @@ pub async fn handler(
     let user_account = UserAccount::from_proto_trade_account(&account, account_ops_script_hash);
     let intent_utxo = from_proto_utxo(order_intent_utxo.as_ref().unwrap());
     let order_value = to_hydra_token(&from_proto_amount(&order_value_l1));
+    let existing_order = from_proto_order(existing_order.as_ref().unwrap())?;
 
     let (updated_balance_l1, account_utxos) =
         from_proto_balance_utxos(account_balance_utxos.as_ref().unwrap());
@@ -56,7 +61,7 @@ pub async fn handler(
     let hydra_order_book_spend = &scripts.hydra_order_book_spend;
     let hydra_order_book_withdrawal = &scripts.hydra_order_book_withdrawal;
 
-    let order_redeemer = HydraOrderBookRedeemer::PlaceOrder(user_account.clone());
+    let order_redeemer = HydraOrderBookRedeemer::ModifyOrder(user_account.clone());
     let intent_datum = HydraUserIntentDatum::<HydraOrderBookIntent>::from_cbor(
         &intent_utxo
             .output
@@ -67,9 +72,28 @@ pub async fn handler(
                 "failed to parse plutus_data from intent_utxo",
             ))?,
     )?;
-    let order = intent_datum.get_placed_order()?;
+    let order = intent_datum.get_modified_order()?;
 
     tx_builder
+        // Old order
+        .spending_plutus_script_v3()
+        .tx_in(
+            &existing_order.order_utxo.input.tx_hash,
+            existing_order.order_utxo.input.output_index,
+            &existing_order.order_utxo.output.amount,
+            &existing_order.order_utxo.output.address,
+        )
+        .tx_in_inline_datum_present()
+        .tx_in_redeemer_value(&user_intent_spend.redeemer(ByteString::new(""), None))
+        .spending_tx_in_reference(
+            collateral.input.tx_hash.as_str(),
+            user_intent_spend.ref_output_index,
+            &user_intent_spend.hash,
+            user_intent_spend.size,
+        )
+        .input_for_evaluation(&intent_utxo)
+        .input_for_evaluation(&user_intent_spend.ref_utxo(&collateral)?)
+        // New order
         .tx_out(&hydra_order_book_spend.address, &order_value)
         .tx_out_inline_datum_value(&WData::JSON(order.to_json_string()));
 
@@ -169,7 +193,7 @@ pub async fn handler(
     let tx_hash = calculate_tx_hash(&tx_hex)?;
     let signed_tx = app_owner_wallet.sign_tx(&tx_hex)?;
 
-    Ok(ProcessOrderResponse {
+    Ok(ProcessModifyOrderResponse {
         signed_tx,
         tx_hash,
         order_utxo_tx_index: 0,
