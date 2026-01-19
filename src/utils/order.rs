@@ -15,7 +15,7 @@ pub fn to_order_datum(
     order_type: ProtoOrderType,
 ) -> Order {
     let split_token_unit = |unit: &str| -> Tuple<(ByteString, ByteString)> {
-        let (policy_id, asset_name) = unit.split_at(28);
+        let (policy_id, asset_name) = unit.split_at(56);
         Tuple::new((ByteString::new(policy_id), ByteString::new(asset_name)))
     };
     let base_tuple = split_token_unit(&base_token_unit);
