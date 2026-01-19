@@ -46,24 +46,25 @@ pub fn to_l1_assets(
         .collect()
 }
 
-pub fn to_hydra_token(assets: &[Asset]) -> Vec<Asset> {
+/// Convert a single L1 token unit to its Hydra equivalent
+pub fn to_hydra_unit(unit: &str) -> String {
     let hydra_token_hash = hydra_token_hash();
 
+    if unit == "lovelace" || unit.is_empty() {
+        hydra_token_hash.to_string()
+    } else {
+        let hashed_unit = blake2b_256_hex(unit);
+        let mut result = String::with_capacity(hydra_token_hash.len() + hashed_unit.len());
+        result.push_str(hydra_token_hash);
+        result.push_str(&hashed_unit);
+        result
+    }
+}
+
+pub fn to_hydra_token(assets: &[Asset]) -> Vec<Asset> {
     assets
         .iter()
-        .map(|asset| {
-            let new_unit = if asset.unit() == "lovelace" || asset.unit().is_empty() {
-                hydra_token_hash.to_string()
-            } else {
-                let hashed_unit = blake2b_256_hex(&asset.unit());
-                let mut result = String::with_capacity(hydra_token_hash.len() + hashed_unit.len());
-                result.push_str(hydra_token_hash);
-                result.push_str(&hashed_unit);
-                result
-            };
-
-            Asset::new_from_str(&new_unit, &asset.quantity())
-        })
+        .map(|asset| Asset::new_from_str(&to_hydra_unit(&asset.unit()), &asset.quantity()))
         .collect()
 }
 
@@ -85,6 +86,25 @@ pub fn blake2b_256_hex(hex_input: &str) -> String {
 mod tests {
     use super::*;
     use crate::test_utils::init_test_env;
+
+    #[test]
+    fn test_hash_lovelace() {
+        init_test_env();
+        let hash = to_hydra_unit("lovelace");
+        assert_eq!(hash, hydra_token_hash());
+    }
+
+    #[test]
+    fn test_hash_custom_asset() {
+        init_test_env();
+        let unit = "c69b981db7a65e339a6d783755f85a2e03afa1cece9714c55fe4c9135553444d";
+        let expected_hash = format!(
+            "{}ae67ab5990f1d43f7f7ed7916888deeef55b8b27d4d155a2c6192601f1566f4e",
+            hydra_token_hash()
+        );
+        let hash = to_hydra_unit(unit);
+        assert_eq!(hash, expected_hash);
+    }
 
     #[test]
     fn test_to_hydra_token_lovelace() {
