@@ -69,13 +69,19 @@ pub async fn handler(
     )?;
 
     let order = intent_datum.get_placed_order()?;
-    println!("Processing order: {:?}", order.to_json_string());
+    println!("[PROCESS_ORDER] Processing order for account_id: {}", account.account_id);
+    println!("[PROCESS_ORDER] Order output at tx_index: 0");
 
     tx_builder
         .tx_out(&hydra_order_book_spend.address, &order_value)
         .tx_out_inline_datum_value(&WData::JSON(order.to_json_string()));
 
+    println!("[PROCESS_ORDER] Consuming {} account balance UTXOs", account_utxos.len());
     for account_utxo in &account_utxos {
+        println!(
+            "[CONSUME_UTXO] Process order consuming account balance UTXO: {}#{} for account_id: {}",
+            account_utxo.input.tx_hash, account_utxo.input.output_index, account.account_id
+        );
         tx_builder
             .spending_plutus_script_v3()
             .tx_in(
@@ -98,12 +104,18 @@ pub async fn handler(
             .input_for_evaluation(&account_utxo);
     }
 
+    println!("[PROCESS_ORDER] Account balance outputs start at tx_index: 1");
+    println!("[PROCESS_ORDER] Processing {} updated balance assets", updated_balance_l1.len());
     unit_tx_index_map.set_index(1);
     for asset in updated_balance_l1 {
+        println!(
+            "[PROCESS_ORDER] Account balance tx_index: {} for account_id: {} asset: {} qty: {}",
+            unit_tx_index_map.current_index, account.account_id, asset.unit(), asset.quantity()
+        );
         tx_builder
             .tx_out(
                 &hydra_account_spend.address,
-                &to_hydra_token(std::slice::from_ref(&asset)),
+                &to_hydra_token(&[asset.clone()]),
             )
             .tx_out_inline_datum_value(&WData::JSON(user_account.to_json_string()));
         unit_tx_index_map.insert(&[asset]);
@@ -172,11 +184,20 @@ pub async fn handler(
     let tx_hash = calculate_tx_hash(&tx_hex)?;
     let signed_tx = app_owner_wallet.sign_tx(&tx_hex)?;
 
+    let account_utxo_tx_index_unit_map = unit_tx_index_map.to_proto();
+
+    println!("[PROCESS_ORDER] Built tx_hex length: {}", tx_hex.len());
+    println!("[PROCESS_ORDER] Calculated tx_hash: {}", tx_hash);
+    println!(
+        "[PROCESS_ORDER] account_utxo_tx_index_unit_map: {:?}",
+        account_utxo_tx_index_unit_map
+    );
+
     Ok(ProcessOrderResponse {
         signed_tx,
         tx_hash,
         order_utxo_tx_index: 0,
-        account_utxo_tx_index_unit_map: unit_tx_index_map.to_proto(),
+        account_utxo_tx_index_unit_map,
     })
 }
 
@@ -333,7 +354,7 @@ mod tests {
                     "Account UTxO Tx Index Unit Map: {:?}",
                     response.account_utxo_tx_index_unit_map
                 );
-                println!("Signed Tx Length: {}", response.signed_tx.len());
+                println!("Signed Tx: {}", response.signed_tx);
             }
             Err(e) => {
                 println!("Error: {:?}", e);

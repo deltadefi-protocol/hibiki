@@ -49,8 +49,14 @@ pub async fn handler(
 
     let order_redeemer = HydraOrderBookRedeemer::CancelOrder;
 
+    println!("[CANCEL_ORDER] Cancelling {} orders for account_id: {}", orders.len(), account.account_id);
+
     for order in &orders {
         let order_utxo = &order.order_utxo;
+        println!(
+            "[CANCEL_ORDER] Input order UTXO: {}#{} for order_id: {}",
+            order_utxo.input.tx_hash, order_utxo.input.output_index, order.order_id
+        );
         tx_builder
             .spending_plutus_script_v3()
             .tx_in(
@@ -70,11 +76,18 @@ pub async fn handler(
             .input_for_evaluation(&order_utxo);
     }
 
+    println!("[CANCEL_ORDER] Account balance outputs start at tx_index: 0");
+    println!("[CANCEL_ORDER] Processing {} updated balance assets", updated_balance_l1.len());
+
     for asset in updated_balance_l1 {
+        println!(
+            "[CANCEL_ORDER] Account balance tx_index: {} for account_id: {} asset: {} qty: {}",
+            unit_tx_index_map.current_index, account.account_id, asset.unit(), asset.quantity()
+        );
         tx_builder
             .tx_out(
                 &hydra_account_spend.address,
-                &to_hydra_token(std::slice::from_ref(&asset)),
+                &to_hydra_token(&[asset.clone()]),
             )
             .tx_out_inline_datum_value(&WData::JSON(user_account.to_json_string()));
         unit_tx_index_map.insert(&[asset]);
@@ -112,10 +125,19 @@ pub async fn handler(
     let tx_hash = calculate_tx_hash(&tx_hex)?;
     let signed_tx = app_owner_wallet.sign_tx(&tx_hex)?;
 
+    let account_utxo_tx_index_unit_map = unit_tx_index_map.to_proto();
+
+    println!("[CANCEL_ORDER] Built tx_hex length: {}", tx_hex.len());
+    println!("[CANCEL_ORDER] Calculated tx_hash: {}", tx_hash);
+    println!(
+        "[CANCEL_ORDER] account_utxo_tx_index_unit_map: {:?}",
+        account_utxo_tx_index_unit_map
+    );
+
     Ok(CancelOrdersResponse {
         signed_tx,
         tx_hash,
-        account_utxo_tx_index_unit_map: unit_tx_index_map.to_proto(),
+        account_utxo_tx_index_unit_map,
     })
 }
 
