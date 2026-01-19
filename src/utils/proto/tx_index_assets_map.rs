@@ -43,3 +43,12 @@ impl TxIndexAssetsMap {
         }
     }
 }
+
+impl Default for TxIndexAssetsMap {
+    fn default() -> Self {
+        TxIndexAssetsMap {
+            map: HashMap::new(),
+            current_index: 0,
+        }
+    }
+}
