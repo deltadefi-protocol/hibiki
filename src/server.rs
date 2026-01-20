@@ -212,7 +212,10 @@ impl Hibiki for HibikiService {
         request: Request<services::SameAccountTransferalRequest>,
     ) -> Result<Response<services::SameAccountTransferalResponse>, Status> {
         let request_result = request.into_inner();
-        println!("Got a request - process_transfer {:?}", request_result);
+        println!(
+            "Got a request - same_account_transferal {:?}",
+            request_result
+        );
         let reply = match same_account_transferal::handler(
             request_result,
             &self.app_owner_wallet,
@@ -305,6 +308,9 @@ impl Hibiki for HibikiService {
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     dotenv().ok();
 
+    // Initialize logger - default to info level, can be overridden with RUST_LOG env var
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
+
     // Initialize Prometheus metrics
     metrics::init_metrics();
 
@@ -327,13 +333,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         scripts,
     };
 
-    println!("gRPC Server listening on port {}...", grpc_port);
-    println!("Metrics server will listen on port {}...", metrics_port);
+    log::info!("gRPC Server listening on port {}...", grpc_port);
+    log::info!("Metrics server will listen on port {}...", metrics_port);
 
     // Start metrics server in background
     tokio::spawn(async move {
         if let Err(e) = metrics_server::start_metrics_server(metrics_port).await {
-            eprintln!("Metrics server error: {}", e);
+            log::error!("Metrics server error: {}", e);
         }
     });
 
