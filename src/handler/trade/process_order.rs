@@ -69,16 +69,16 @@ pub async fn handler(
     )?;
 
     let order = intent_datum.get_placed_order()?;
-    println!("[PROCESS_ORDER] Processing order for account_id: {}", account.account_id);
-    println!("[PROCESS_ORDER] Order output at tx_index: 0");
+    log::info!("[PROCESS_ORDER] Processing order for account_id: {}", account.account_id);
+    log::debug!("[PROCESS_ORDER] Order output at tx_index: 0");
 
     tx_builder
         .tx_out(&hydra_order_book_spend.address, &order_value)
         .tx_out_inline_datum_value(&WData::JSON(order.to_json_string()));
 
-    println!("[PROCESS_ORDER] Consuming {} account balance UTXOs", account_utxos.len());
+    log::debug!("[PROCESS_ORDER] Consuming {} account balance UTXOs", account_utxos.len());
     for account_utxo in &account_utxos {
-        println!(
+        log::debug!(
             "[CONSUME_UTXO] Process order consuming account balance UTXO: {}#{} for account_id: {}",
             account_utxo.input.tx_hash, account_utxo.input.output_index, account.account_id
         );
@@ -104,11 +104,11 @@ pub async fn handler(
             .input_for_evaluation(&account_utxo);
     }
 
-    println!("[PROCESS_ORDER] Account balance outputs start at tx_index: 1");
-    println!("[PROCESS_ORDER] Processing {} updated balance assets", updated_balance_l1.len());
+    log::debug!("[PROCESS_ORDER] Account balance outputs start at tx_index: 1");
+    log::debug!("[PROCESS_ORDER] Processing {} updated balance assets", updated_balance_l1.len());
     unit_tx_index_map.set_index(1);
     for asset in updated_balance_l1 {
-        println!(
+        log::debug!(
             "[PROCESS_ORDER] Account balance tx_index: {} for account_id: {} asset: {} qty: {}",
             unit_tx_index_map.current_index, account.account_id, asset.unit(), asset.quantity()
         );
@@ -186,9 +186,9 @@ pub async fn handler(
 
     let account_utxo_tx_index_unit_map = unit_tx_index_map.to_proto();
 
-    println!("[PROCESS_ORDER] Built tx_hex length: {}", tx_hex.len());
-    println!("[PROCESS_ORDER] Calculated tx_hash: {}", tx_hash);
-    println!(
+    log::debug!("[PROCESS_ORDER] Built tx_hex length: {}", tx_hex.len());
+    log::info!("[PROCESS_ORDER] tx_hash: {}", tx_hash);
+    log::debug!(
         "[PROCESS_ORDER] account_utxo_tx_index_unit_map: {:?}",
         account_utxo_tx_index_unit_map
     );

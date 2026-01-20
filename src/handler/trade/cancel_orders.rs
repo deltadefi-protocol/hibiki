@@ -49,11 +49,11 @@ pub async fn handler(
 
     let order_redeemer = HydraOrderBookRedeemer::CancelOrder;
 
-    println!("[CANCEL_ORDER] Cancelling {} orders for account_id: {}", orders.len(), account.account_id);
+    log::info!("[CANCEL_ORDER] Cancelling {} orders for account_id: {}", orders.len(), account.account_id);
 
     for order in &orders {
         let order_utxo = &order.order_utxo;
-        println!(
+        log::debug!(
             "[CANCEL_ORDER] Input order UTXO: {}#{} for order_id: {}",
             order_utxo.input.tx_hash, order_utxo.input.output_index, order.order_id
         );
@@ -76,11 +76,11 @@ pub async fn handler(
             .input_for_evaluation(&order_utxo);
     }
 
-    println!("[CANCEL_ORDER] Account balance outputs start at tx_index: 0");
-    println!("[CANCEL_ORDER] Processing {} updated balance assets", updated_balance_l1.len());
+    log::debug!("[CANCEL_ORDER] Account balance outputs start at tx_index: 0");
+    log::debug!("[CANCEL_ORDER] Processing {} updated balance assets", updated_balance_l1.len());
 
     for asset in updated_balance_l1 {
-        println!(
+        log::debug!(
             "[CANCEL_ORDER] Account balance tx_index: {} for account_id: {} asset: {} qty: {}",
             unit_tx_index_map.current_index, account.account_id, asset.unit(), asset.quantity()
         );
@@ -127,9 +127,9 @@ pub async fn handler(
 
     let account_utxo_tx_index_unit_map = unit_tx_index_map.to_proto();
 
-    println!("[CANCEL_ORDER] Built tx_hex length: {}", tx_hex.len());
-    println!("[CANCEL_ORDER] Calculated tx_hash: {}", tx_hash);
-    println!(
+    log::debug!("[CANCEL_ORDER] Built tx_hex length: {}", tx_hex.len());
+    log::info!("[CANCEL_ORDER] tx_hash: {}", tx_hash);
+    log::debug!(
         "[CANCEL_ORDER] account_utxo_tx_index_unit_map: {:?}",
         account_utxo_tx_index_unit_map
     );

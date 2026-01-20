@@ -72,7 +72,7 @@ pub async fn handler(
     )));
     let intent = Box::new((user_account, place_order_intent));
 
-    println!("Place Order Intent: {:?}", intent.clone().to_json_string());
+    log::debug!("[PLACE_ORDER] Intent: {:?}", intent.clone().to_json_string());
 
     tx_builder
         .read_only_tx_in_reference(&ref_input.input.tx_hash, ref_input.input.output_index, None)

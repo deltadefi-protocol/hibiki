@@ -86,7 +86,7 @@ pub async fn handler(
         .input_for_evaluation(&collateral)
         .change_address(&request.address);
 
-    println!("tx builder: {:?}", tx_builder.mint_item);
+    log::debug!("[INTERNAL_TRANSFER] tx_builder.mint_item: {:?}", tx_builder.mint_item);
 
     tx_builder.complete(None).await?;
 
@@ -107,7 +107,7 @@ mod tests {
 
     use super::*;
     use crate::scripts::ScriptCache;
-    use dotenv::dotenv;
+    use crate::test_utils::init_test_env;
 
     #[test]
     fn test_internal_transfer() {
@@ -126,37 +126,59 @@ mod tests {
     }
 
     async fn test_internal_transfer_case_1() {
-        dotenv().ok();
+        init_test_env();
 
         let request = InternalTransferRequest {
             account: Some(AccountInfo {
-                account_id: "6d4cd57d-bf6d-40e5-aabb-ff29d07ebf84".to_string(),
+                account_id: "86acc254-1528-4007-a75f-32075fc1b609".to_string(),
                 account_type: "spot_account".to_string(),
-                master_key: "96583f8d90dd2fbd6ba72f992576c0906ae6a37072383ce71b815fd6".to_string(),
+                master_key: "4ba6dd244255995969d2c05e323686bcbaba83b736e729941825d79b".to_string(),
                 is_script_master_key: false,
-                operation_key: "0160ee500ac5bff5a353f92701ca1df9de204368cf054039d90b6231".to_string(),
+                operation_key: "b21f857716821354725bc2bd255dc2e5d5fdfa202556039b76c080a5".to_string(),
                 is_script_operation_key: false,
             }),
             receiver_account: Some(AccountInfo {
-                account_id: "2953c409-63d0-4bee-abbe-f11e4c8be0ce".to_string(),
+                account_id: "2c4d8d95-3144-4be0-b9f7-7d32a2008798".to_string(),
                 account_type: "spot_account".to_string(),
-                master_key: "75073cd8873918696e373264763422e5c4d4fe63b4e941c42a5381d6".to_string(),
+                master_key: "762bb328796001c99bd22819544a11bf493b62224af52b3dff9b0add".to_string(),
                 is_script_master_key: false,
-                operation_key: "c472ce633c4acf91dda311f10cb45671d6dcfbae3bdc25d219f83159".to_string(),
+                operation_key: "b21f857716821354725bc2bd255dc2e5d5fdfa202556039b76c080a5".to_string(),
                 is_script_operation_key: false,
             }),
-            to_transfer: vec![Asset {
-                unit: "lovelace".to_string(),
-                quantity: "10000000".to_string(),
-            }],
-            address: "addr1qxt9s0udjrwjl0tt5uhejftkczgx4e4rwpers088rwq4l4ke4usmcymrnnjgq22cs7fku6ytpcltxmaly5kvlne0tges00kpag".to_string(),
+            to_transfer: vec![
+                Asset {
+                    unit: "lovelace".to_string(),
+                    quantity: "23506875".to_string(),
+                },
+                Asset {
+                    unit: "c69b981db7a65e339a6d783755f85a2e03afa1cece9714c55fe4c9135553444d".to_string(),
+                    quantity: "47013750000".to_string(),
+                },
+                Asset {
+                    unit: "3363b99384d6ee4c4b009068af396c8fdf92dafd111e58a857af04294e49474854".to_string(),
+                    quantity: "47013750000".to_string(),
+                },
+                Asset {
+                    unit: "378f9732c755ed6f4fc8d406f1461d0cca95d7d2e69416784684df39534e454b".to_string(),
+                    quantity: "47013750000".to_string(),
+                },
+                Asset {
+                    unit: "82e46eb16633bf8bfa820c83ffeb63192c6e21757d2bf91290b2f41d494147".to_string(),
+                    quantity: "47013750000".to_string(),
+                },
+                Asset {
+                    unit: "a2818ba06a88bb6c08d10f4f9b897c09768f28d274093628ad7086fc484f534b59".to_string(),
+                    quantity: "47013750000".to_string(),
+                },
+            ],
+            address: "addr_test1qp96dhfygf2ejktf6tq9uv3ks67t4w5rkumww2v5rqja0xcx8ls6mu88ytwql66750at9at4apy4jdezhu22artnvlys7ec2gm".to_string(),
             collateral_utxo: Some(UTxO {
                 input: Some(UtxoInput {
                     output_index: 0,
-                    tx_hash: "74590385acea755d91a0d4c4f4c0fc8d9e1fa0627d33735a95a7f727ca371af6".to_string(),
+                    tx_hash: "91fddaab7baf528c4c67c67da8bf20e1de482037b78fb836963de24fdee3d45f".to_string(),
                 }),
                 output: Some(UtxoOutput {
-                    address: "addr1vxqvl5uxf66cpx89l6965wklka7ucuwxasyxz68dvakmhacjpuz0c".to_string(),
+                    address: "addr_test1vra9zdhfa8kteyr3mfe7adkf5nlh8jl5xcg9e7pcp5w9yhq5exvwh".to_string(),
                     amount: vec![Asset {
                         unit: "lovelace".to_string(),
                         quantity: "10000000".to_string(),
@@ -169,11 +191,11 @@ mod tests {
             }),
             empty_utxo: Some(UTxO {
                 input: Some(UtxoInput {
-                    output_index: 893,
-                    tx_hash: "74590385acea755d91a0d4c4f4c0fc8d9e1fa0627d33735a95a7f727ca371af6".to_string(),
+                    output_index: 1,
+                    tx_hash: "85c29440753e4f4d3c5c634b6c7b7eb35af5e3a5f9465fdbb4b80284d499e17e".to_string(),
                 }),
                 output: Some(UtxoOutput {
-                    address: "addr1qxqvl5uxf66cpx89l6965wklka7ucuwxasyxz68dvakmhamdcgjlk94f0wjhvgu8fx3evwzw8dcnretnnj42xyuw7guqpp4d7m".to_string(),
+                    address: "addr_test1qra9zdhfa8kteyr3mfe7adkf5nlh8jl5xcg9e7pcp5w9yhyf5tek6vpnha97yd5yw9pezm3wyd77fyrfs3ynftyg7njs5cfz2x".to_string(),
                     amount: vec![Asset {
                         unit: "lovelace".to_string(),
                         quantity: "0".to_string(),
@@ -187,22 +209,22 @@ mod tests {
             dex_order_book_utxo: Some(UTxO {
                 input: Some(UtxoInput {
                     output_index: 0,
-                    tx_hash: "522ef27241b80a8ea4f54ed5c1674fcf49638c3a4b65a0e21371a21a0d343956".to_string(),
+                    tx_hash: "92618472886c4d9c90b39d700371a97aa1164ac8103609577035e96f7791998c".to_string(),
                 }),
                 output: Some(UtxoOutput {
-                    address: "addr1wx73pap60td0s7mfmtlgv74qwru64xlt9g7nlmf5ctjd8aq04h27t".to_string(),
+                    address: "addr_test1wrcdptezp2cdpn4gm0c72xljvzjgvapfnnvtsv34zuefe9q70mdxj".to_string(),
                     amount: vec![
                         Asset {
                             unit: "lovelace".to_string(),
                             quantity: "6000000".to_string(),
                         },
                         Asset {
-                            unit: "f9548d81418838f704b9dbd6a172422c943878934756c3fd28d736ef".to_string(),
+                            unit: "9ee27af30bcbcf1a399bfa531f5d9aef63f18c9ea761d5ce96ab3d6d".to_string(),
                             quantity: "1".to_string(),
-                        }
+                        },
                     ],
-                    data_hash: "426bcc8154a5320d0e62212c5fe774f5e19c40ba9a18c2355a354997425a121e".to_string(),
-                    plutus_data: "d8799f581c80cfd3864eb58098e5fe8baa3adfb77dcc71c6ec086168ed676dbbf7581c9df20621e6bc47694d878e8a10214feb2ab311ef2a0ef634875c7f55d8799fd8799f506f741d20e13c41598215e8b0f762aa76d8799f581c18ab3c3346746ab95f78d3a54c2ddd53a98ffe5c447b85091e336bb9ffd8799f581c4d84776b18d8dcedab1f2b9499c674d50e16d50d1b892d28c55e1da0ffff581cc90820268cd4879e21beabcbf13e992ecdd42ffa88720f4092cf9fa2ff58200000000000000000000000000000000000000000000000000000000000000000581c8516d6c94f15a040537b3f8ac5be09123fe01e02d60dcc8dd1276628d8799fd87a9f581c76453dd95f7a7f1cd95473aae5ace476a847973b1b3dd1547b9af8c4ffd87a80ff581cf9548d81418838f704b9dbd6a172422c943878934756c3fd28d736efd8799fd87a9f581cbd10f43a7adaf87b69dafe867aa070f9aa9beb2a3d3fed34c2e4d3f4ffd87a80ff581c01ea173d0e9d6cfe833789532a8f3b6ab4e5ee1a247e249b51b2a7f6581c467ca8b7dabf347957f6ddeafad7f780487c9260f31f5aaa36001344581cc90820268cd4879e21beabcbf13e992ecdd42ffa88720f4092cf9fa2581c9981a3ebed1dfeccafc0fe97384f5bbb0e6cd856b3c680ba0bb2697eff".to_string(),
+                    data_hash: "93fc6a09dc385a32ab604ef5bdcfec071121e05f2281fe207168fa576714a371".to_string(),
+                    plutus_data: "d8799f581cfa5136e9e9ecbc9071da73eeb6c9a4ff73cbf436105cf8380d1c525c581cc25ead27ea81d621dfb7c02dfda90264c5f4777e1e745f96c36aaa15d8799fd8799f50326b89494e3847c2888723e7c5d3d654d8799f581c04845038ee499ee8bc0afe56f688f27b2dd76f230d3698a9afcc1b66ffd8799f581cb21f857716821354725bc2bd255dc2e5d5fdfa202556039b76c080a5ffff581c832b66dd9fa4fddab9d76b47a9e6f9a2b538c053e3a0b42d347a12e2ff58200000000000000000000000000000000000000000000000000000000000000000581ce1808a4ae0d35578a215cd68cf63b86ee40759650ea4cde97fc8a05dd8799fd87a9f581cda2156330d5ac0c69125eea74b41e58dd14a80a78b71e7b9add8eb4effd87a80ff581c9ee27af30bcbcf1a399bfa531f5d9aef63f18c9ea761d5ce96ab3d6dd8799fd87a9f581cf0d0af220ab0d0cea8dbf1e51bf260a48674299cd8b8323517329c94ffd87a80ff581c333a05dd70f3eddbf56d5441d75e8a513c6baee7aebe5057351ae85f581cbef30f7146f3370715356f4f88c64928d62708afec6796ddf1070b88581c832b66dd9fa4fddab9d76b47a9e6f9a2b538c053e3a0b42d347a12e2581cb28603ecb7ab3818bac7dc5f7f9260652443bbc1a471afb90c7fc816ff".to_string(),
                     script_ref: "".to_string(),
                     script_hash: "".to_string(),
                 }),

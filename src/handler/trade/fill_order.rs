@@ -57,16 +57,16 @@ pub async fn handler(
 
     let order_redeemer =
         HydraOrderBookRedeemer::FillOrder(ByteString::new(&taker_order_id.replace("-", "")));
-    println!(
+    log::info!(
         "[FILL_ORDER] Starting fill order build for taker_order_id: {}",
         taker_order_id
     );
-    println!("[FILL_ORDER] Total orders to process: {}", orders.len());
+    log::debug!("[FILL_ORDER] Total orders to process: {}", orders.len());
 
     for order in &orders {
         let order_utxo = &order.order_utxo;
         // Log input being consumed
-        println!(
+        log::debug!(
             "[FILL_ORDER] Input order UTXO: {}#{} for order_id: {}",
             order_utxo.input.tx_hash, order_utxo.input.output_index, order.order_id
         );
@@ -90,7 +90,7 @@ pub async fn handler(
             .input_for_evaluation(&order_utxo);
         // if fully filled -> skip
         if order.updated_order_size == 0 {
-            println!(
+            log::debug!(
                 "[FILL_ORDER] Order {} fully filled, no output created",
                 order.order_id
             );
@@ -111,7 +111,7 @@ pub async fn handler(
                     &to_hydra_token(&order.updated_order_value_l1),
                 )
                 .tx_out_inline_datum_value(&WData::JSON(updated_order.to_json_string()));
-            println!(
+            log::debug!(
                 "[FILL_ORDER] Partial order output at tx_index: {} for order_id: {}",
                 current_index, order.order_id
             );
@@ -120,11 +120,11 @@ pub async fn handler(
         }
     }
 
-    println!(
+    log::debug!(
         "[FILL_ORDER] Account balance outputs start at tx_index: {}",
         current_index
     );
-    println!(
+    log::debug!(
         "[FILL_ORDER] Total new_balance_outputs to process: {}",
         new_balance_outputs.len()
     );
@@ -136,7 +136,7 @@ pub async fn handler(
         let account = UserAccount::from_proto_trade_account(&account_info, account_ops_script_hash);
         let new_balance_assets_l1 = from_proto_amount(&new_balance_output.balance_l1);
 
-        println!(
+        log::debug!(
             "[FILL_ORDER] Processing account_id: {} with {} assets, starting at tx_index: {}",
             account_info.account_id,
             new_balance_assets_l1.len(),
@@ -151,9 +151,12 @@ pub async fn handler(
                 )
                 .tx_out_inline_datum_value(&WData::JSON(account.to_json_string()));
 
-            println!(
+            log::debug!(
                 "[FILL_ORDER] Account balance tx_index: {} for account_id: {} asset: {} qty: {}",
-                current_index, account_info.account_id, asset_l1.unit(), asset_l1.quantity()
+                current_index,
+                account_info.account_id,
+                asset_l1.unit(),
+                asset_l1.quantity()
             );
 
             tx_index_assets_map.insert(&[asset_l1]);
@@ -161,7 +164,7 @@ pub async fn handler(
         }
 
         if let Some(proto) = tx_index_assets_map.to_proto() {
-            println!(
+            log::debug!(
                 "[FILL_ORDER] Created tx_index_assets_map for account_id: {}: {:?}",
                 account_info.account_id, proto
             );
@@ -203,13 +206,13 @@ pub async fn handler(
 
     let hydra_order_utxo_tx_index_map_proto = hydra_order_utxo_tx_index_map.to_proto();
 
-    println!("[FILL_ORDER] Built tx_hex length: {}", tx_hex.len());
-    println!("[FILL_ORDER] Calculated tx_hash: {}", tx_hash);
-    println!(
+    log::debug!("[FILL_ORDER] Built tx_hex length: {}", tx_hex.len());
+    log::info!("[FILL_ORDER] tx_hash: {}", tx_hash);
+    log::debug!(
         "[FILL_ORDER] hydra_order_utxo_tx_index_map: {:?}",
         hydra_order_utxo_tx_index_map_proto
     );
-    println!(
+    log::debug!(
         "[FILL_ORDER] hydra_account_balance_tx_index_unit_map: {:?}",
         hydra_account_balance_tx_index_unit_map
     );
