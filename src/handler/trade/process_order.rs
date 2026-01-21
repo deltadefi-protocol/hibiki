@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use hibiki_proto::services::{ProcessOrderRequest, ProcessOrderResponse};
 use whisky::{
     calculate_tx_hash,
@@ -35,6 +37,7 @@ pub async fn handler(
         dex_order_book_utxo,
     } = request;
 
+    let start = Instant::now();
     let app_owner_vkey = &config.app_owner_vkey;
     let account_ops_script_hash = &scripts.hydra_order_book_withdrawal.hash;
 
@@ -187,7 +190,7 @@ pub async fn handler(
     let account_utxo_tx_index_unit_map = unit_tx_index_map.to_proto();
 
     log::debug!("[PROCESS_ORDER] Built tx_hex length: {}", tx_hex.len());
-    log::info!("[PROCESS_ORDER] tx_hash: {}", tx_hash);
+    log::info!("[PROCESS_ORDER] tx_hash: {} completed in {:?}", tx_hash, start.elapsed());
     log::debug!(
         "[PROCESS_ORDER] account_utxo_tx_index_unit_map: {:?}",
         account_utxo_tx_index_unit_map
