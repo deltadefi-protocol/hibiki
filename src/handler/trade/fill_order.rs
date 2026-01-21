@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::time::Instant;
 
 use hibiki_proto::services::{FillOrderRequest, FillOrderResponse};
 use whisky::{
@@ -36,6 +37,7 @@ pub async fn handler(
         ..
     } = request;
 
+    let start = Instant::now();
     let app_owner_vkey = &config.app_owner_vkey;
     let account_ops_script_hash = &scripts.hydra_order_book_withdrawal.hash;
 
@@ -207,7 +209,7 @@ pub async fn handler(
     let hydra_order_utxo_tx_index_map_proto = hydra_order_utxo_tx_index_map.to_proto();
 
     log::debug!("[FILL_ORDER] Built tx_hex length: {}", tx_hex.len());
-    log::info!("[FILL_ORDER] tx_hash: {}", tx_hash);
+    log::info!("[FILL_ORDER] tx_hash: {} completed in {:?}", tx_hash, start.elapsed());
     log::debug!(
         "[FILL_ORDER] hydra_order_utxo_tx_index_map: {:?}",
         hydra_order_utxo_tx_index_map_proto

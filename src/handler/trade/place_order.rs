@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use hibiki_proto::services::{IntentTxResponse, OrderType, PlaceOrderRequest};
 use whisky::{calculate_tx_hash, data::PlutusDataJson, Asset, WData, WError};
 
@@ -38,6 +40,7 @@ pub async fn handler(
         order_type,
     } = request;
 
+    let start = Instant::now();
     let app_owner_vkey = &config.app_owner_vkey;
     let account_ops_script_hash = &scripts.hydra_order_book_withdrawal.hash;
 
@@ -120,6 +123,8 @@ pub async fn handler(
 
     let tx_hex = tx_builder.tx_hex();
     let tx_hash = calculate_tx_hash(&tx_hex)?;
+
+    log::info!("[PLACE_ORDER] tx_hash: {} completed in {:?}", tx_hash, start.elapsed());
 
     Ok(IntentTxResponse {
         tx_hex,
