@@ -278,6 +278,8 @@ pub async fn handler(
             })
         },
     })
+
+    // todo: remove this cm
 }
 
 // todo: make tests work with new script
