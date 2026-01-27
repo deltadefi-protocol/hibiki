@@ -75,7 +75,10 @@ pub async fn handler(
     )));
     let intent = Box::new((user_account, place_order_intent));
 
-    log::debug!("[PLACE_ORDER] Intent: {:?}", intent.clone().to_json_string());
+    log::debug!(
+        "[PLACE_ORDER] Intent: {:?}",
+        intent.clone().to_json_string()
+    );
 
     tx_builder
         .read_only_tx_in_reference(&ref_input.input.tx_hash, ref_input.input.output_index, None)
@@ -124,7 +127,11 @@ pub async fn handler(
     let tx_hex = tx_builder.tx_hex();
     let tx_hash = calculate_tx_hash(&tx_hex)?;
 
-    log::info!("[PLACE_ORDER] tx_hash: {} completed in {:?}", tx_hash, start.elapsed());
+    log::info!(
+        "[PLACE_ORDER] tx_hash: {} completed in {:?}",
+        tx_hash,
+        start.elapsed()
+    );
 
     Ok(IntentTxResponse {
         tx_hex,
@@ -138,7 +145,8 @@ pub async fn handler(
 mod tests {
     use super::*;
     use crate::config::AppConfig;
-    use crate::scripts::ScriptCache;
+    use crate::scripts::{ScriptCache, UserAccount};
+    use crate::test_fixtures::{build_collateral_utxo, build_dex_order_book_utxo, L2ScriptConfig};
     use crate::test_utils::init_test_env;
     use hibiki_proto::services::{AccountInfo, Asset, UTxO, UtxoInput, UtxoOutput};
 
@@ -151,54 +159,61 @@ mod tests {
                     .enable_all()
                     .build()
                     .unwrap();
-                rt.block_on(test_place_order_case_1());
+                rt.block_on(test_place_order_case());
             })
             .unwrap();
 
         handle.join().unwrap();
     }
 
-    async fn test_place_order_case_1() {
+    async fn test_place_order_case() {
         init_test_env();
 
+        let scripts = ScriptCache::new();
+        let l2_config = L2ScriptConfig::default();
+
         let account = AccountInfo {
-            account_id: "569c4c28-6389-40ac-aa30-e573f8969f09".to_string(),
+            account_id: "a810ec7a-7069-4157-aead-48ecf4d693c8".to_string(),
             account_type: "spot_account".to_string(),
-            master_key: "4ba6dd244255995969d2c05e323686bcbaba83b736e729941825d79b".to_string(),
+            master_key: "fdeb4bf0e8c077114a4553f1e05395e9fb7114db177f02f7b65c8de4".to_string(),
             is_script_master_key: false,
             operation_key: "b21f857716821354725bc2bd255dc2e5d5fdfa202556039b76c080a5".to_string(),
             is_script_operation_key: false,
         };
 
+        // Create user account for building dex_order_book_utxo
+        let user_account = UserAccount::from_proto_trade_account(
+            &account,
+            &scripts.hydra_order_book_withdrawal.hash,
+        );
+
+        // Build dex_order_book_utxo dynamically with current script hashes
+        let dex_order_book_utxo = build_dex_order_book_utxo(
+            &scripts,
+            &l2_config,
+            "4a50e9271bc74e8f143207134a5a62db89fab76eb55fbd00786487966158d86d",
+            0,
+            &user_account,
+        )
+        .expect("Failed to build dex_order_book_utxo");
+
         let request = PlaceOrderRequest {
-            address: "addr_test1qp96dhfygf2ejktf6tq9uv3ks67t4w5rkumww2v5rqja0xcx8ls6mu88ytwql66750at9at4apy4jdezhu22artnvlys7ec2gm".to_string(),
+            address: "addr_test1qr77kjlsarq8wy22g4flrcznjh5lkug5mvth7qhhkewgmezwvc8hnnjzy82j5twzf8dfy5gjk04yd09t488ys9605dvq4ymc4x".to_string(),
             account: Some(account),
-            collateral_utxo: Some(UTxO {
-                input: Some(UtxoInput {
-                    output_index: 0,
-                    tx_hash: "c5a73bfd3a4b6ade924a2179c0ebe625a0b0529a2650eaabeeb83dd62b56ffd1".to_string(),
-                }),
-                output: Some(UtxoOutput {
-                    address: "addr_test1vra9zdhfa8kteyr3mfe7adkf5nlh8jl5xcg9e7pcp5w9yhq5exvwh".to_string(),
-                    amount: vec![Asset {
-                        unit: "lovelace".to_string(),
-                        quantity: "10000000".to_string(),
-                    }],
-                    data_hash: "".to_string(),
-                    plutus_data: "".to_string(),
-                    script_ref: "".to_string(),
-                    script_hash: "".to_string(),
-                }),
-            }),
-            order_id: "15f94aee-8c88-4fe6-9680-580f284367d9".to_string(),
+            collateral_utxo: Some(build_collateral_utxo(
+                "268896892a4e5d6fb004b235be696a990073e4984772eac156da83772a6ce176",
+                0,
+                "10000000",
+            )),
+            order_id: "7398aea0-392e-4198-8dc2-4abaf5e5afa4".to_string(),
             is_buy: true,
-            list_price_times_one_tri: 438900000000,
-            order_size: 8778000,
+            list_price_times_one_tri: 890900000000,
+            order_size: 199999922800,
             commission_rate_bp: 10,
             empty_utxo: Some(UTxO {
                 input: Some(UtxoInput {
-                    output_index: 656,
-                    tx_hash: "c5a73bfd3a4b6ade924a2179c0ebe625a0b0529a2650eaabeeb83dd62b56ffd1".to_string(),
+                    output_index: 642,
+                    tx_hash: "268896892a4e5d6fb004b235be696a990073e4984772eac156da83772a6ce176".to_string(),
                 }),
                 output: Some(UtxoOutput {
                     address: "addr_test1qra9zdhfa8kteyr3mfe7adkf5nlh8jl5xcg9e7pcp5w9yhyf5tek6vpnha97yd5yw9pezm3wyd77fyrfs3ynftyg7njs5cfz2x".to_string(),
@@ -212,32 +227,10 @@ mod tests {
                     script_hash: "".to_string(),
                 }),
             }),
-            dex_order_book_utxo: Some(UTxO {
-                input: Some(UtxoInput {
-                    output_index: 0,
-                    tx_hash: "23df334ce4ac85f4d6ea3468439f87ec907f9d6df8f595d1751acd0f4591ce60".to_string(),
-                }),
-                output: Some(UtxoOutput {
-                    address: "addr_test1wrcdptezp2cdpn4gm0c72xljvzjgvapfnnvtsv34zuefe9q70mdxj".to_string(),
-                    amount: vec![
-                        Asset {
-                            unit: "lovelace".to_string(),
-                            quantity: "6000000".to_string(),
-                        },
-                        Asset {
-                            unit: "9ee27af30bcbcf1a399bfa531f5d9aef63f18c9ea761d5ce96ab3d6d".to_string(),
-                            quantity: "1".to_string(),
-                        },
-                    ],
-                    data_hash: "db15212723f8ecfd6fbaf0a7a52ccee752f164f2dfda685fa673b4de6db3d6c7".to_string(),
-                    plutus_data: "d8799f581cfa5136e9e9ecbc9071da73eeb6c9a4ff73cbf436105cf8380d1c525c581cc25ead27ea81d621dfb7c02dfda90264c5f4777e1e745f96c36aaa15d8799fd8799f5019fb5dfe07d045719104d39e9a0bf8b0d8799f581c04845038ee499ee8bc0afe56f688f27b2dd76f230d3698a9afcc1b66ffd8799f581cb21f857716821354725bc2bd255dc2e5d5fdfa202556039b76c080a5ffff581c832b66dd9fa4fddab9d76b47a9e6f9a2b538c053e3a0b42d347a12e2ff58200000000000000000000000000000000000000000000000000000000000000000581ce1808a4ae0d35578a215cd68cf63b86ee40759650ea4cde97fc8a05dd8799fd87a9f581cda2156330d5ac0c69125eea74b41e58dd14a80a78b71e7b9add8eb4effd87a80ff581c9ee27af30bcbcf1a399bfa531f5d9aef63f18c9ea761d5ce96ab3d6dd8799fd87a9f581cf0d0af220ab0d0cea8dbf1e51bf260a48674299cd8b8323517329c94ffd87a80ff581c333a05dd70f3eddbf56d5441d75e8a513c6baee7aebe5057351ae85f581cbef30f7146f3370715356f4f88c64928d62708afec6796ddf1070b88581c832b66dd9fa4fddab9d76b47a9e6f9a2b538c053e3a0b42d347a12e2581cb28603ecb7ab3818bac7dc5f7f9260652443bbc1a471afb90c7fc816ff".to_string(),
-                    script_ref: "".to_string(),
-                    script_hash: "".to_string(),
-                }),
-            }),
+            dex_order_book_utxo: Some(dex_order_book_utxo),
             authorized_account_value_l1: vec![Asset {
                 unit: "c69b981db7a65e339a6d783755f85a2e03afa1cece9714c55fe4c9135553444d".to_string(),
-                quantity: "8778000".to_string(),
+                quantity: "199999922800".to_string(),
             }],
             base_token_unit: "lovelace".to_string(),
             quote_token_unit: "c69b981db7a65e339a6d783755f85a2e03afa1cece9714c55fe4c9135553444d".to_string(),
@@ -245,7 +238,6 @@ mod tests {
         };
 
         let config = AppConfig::new();
-        let scripts = ScriptCache::new();
 
         let result = handler(request, &config, &scripts).await;
 
@@ -253,13 +245,12 @@ mod tests {
             Ok(response) => {
                 println!("=== Place Order Result ===");
                 println!("Tx Hash: {}", response.tx_hash);
-                println!("Tx Hash: {}", response.tx_hash);
                 println!("Tx Index: {}", response.tx_index);
                 println!(
                     "New Empty UTxO Tx Index: {}",
                     response.new_empty_utxo_tx_index
                 );
-                println!("Tx Hex Length: {}", response.tx_hex.len());
+                println!("Tx Hex: {}", response.tx_hex);
             }
             Err(e) => {
                 println!("Error: {:?}", e);
@@ -268,7 +259,7 @@ mod tests {
     }
 
     #[test]
-    fn test_place_order_handler_2() {
+    fn test_place_order_handler_market_sell() {
         let handle = std::thread::Builder::new()
             .stack_size(32 * 1024 * 1024)
             .spawn(|| {
@@ -276,54 +267,61 @@ mod tests {
                     .enable_all()
                     .build()
                     .unwrap();
-                rt.block_on(test_place_order_case_2());
+                rt.block_on(test_place_order_case_market_sell());
             })
             .unwrap();
 
         handle.join().unwrap();
     }
 
-    async fn test_place_order_case_2() {
+    async fn test_place_order_case_market_sell() {
         init_test_env();
 
+        let scripts = ScriptCache::new();
+        let l2_config = L2ScriptConfig::default();
+
         let account = AccountInfo {
-            account_id: "fb97a6ce-361e-4063-b8b4-0da7545e1ee9".to_string(),
+            account_id: "a810ec7a-7069-4157-aead-48ecf4d693c8".to_string(),
             account_type: "spot_account".to_string(),
-            master_key: "4ba6dd244255995969d2c05e323686bcbaba83b736e729941825d79b".to_string(),
+            master_key: "fdeb4bf0e8c077114a4553f1e05395e9fb7114db177f02f7b65c8de4".to_string(),
             is_script_master_key: false,
             operation_key: "b21f857716821354725bc2bd255dc2e5d5fdfa202556039b76c080a5".to_string(),
             is_script_operation_key: false,
         };
 
+        // Create user account for building dex_order_book_utxo
+        let user_account = UserAccount::from_proto_trade_account(
+            &account,
+            &scripts.hydra_order_book_withdrawal.hash,
+        );
+
+        // Build dex_order_book_utxo dynamically with current script hashes
+        let dex_order_book_utxo = build_dex_order_book_utxo(
+            &scripts,
+            &l2_config,
+            "4a50e9271bc74e8f143207134a5a62db89fab76eb55fbd00786487966158d86d",
+            0,
+            &user_account,
+        )
+        .expect("Failed to build dex_order_book_utxo");
+
         let request = PlaceOrderRequest {
-            address: "addr_test1qp96dhfygf2ejktf6tq9uv3ks67t4w5rkumww2v5rqja0xcx8ls6mu88ytwql66750at9at4apy4jdezhu22artnvlys7ec2gm".to_string(),
+            address: "addr_test1qr77kjlsarq8wy22g4flrcznjh5lkug5mvth7qhhkewgmezwvc8hnnjzy82j5twzf8dfy5gjk04yd09t488ys9605dvq4ymc4x".to_string(),
             account: Some(account),
-            collateral_utxo: Some(UTxO {
-                input: Some(UtxoInput {
-                    output_index: 0,
-                    tx_hash: "7484ea8cca646ad42a357f6d5973563ce1914badf0a93e7acb0b41d4b136c440".to_string(),
-                }),
-                output: Some(UtxoOutput {
-                    address: "addr_test1vra9zdhfa8kteyr3mfe7adkf5nlh8jl5xcg9e7pcp5w9yhq5exvwh".to_string(),
-                    amount: vec![Asset {
-                        unit: "lovelace".to_string(),
-                        quantity: "10000000".to_string(),
-                    }],
-                    data_hash: "".to_string(),
-                    plutus_data: "".to_string(),
-                    script_ref: "".to_string(),
-                    script_hash: "".to_string(),
-                }),
-            }),
-            order_id: "a5b813e8-987d-4594-b16b-80e95964686f".to_string(),
-            is_buy: true,
-            list_price_times_one_tri: 438900000000,
-            order_size: 6583500,
+            collateral_utxo: Some(build_collateral_utxo(
+                "268896892a4e5d6fb004b235be696a990073e4984772eac156da83772a6ce176",
+                0,
+                "10000000",
+            )),
+            order_id: "279aee26-ad29-4a00-a47a-fd2acea34e98".to_string(),
+            is_buy: false,
+            list_price_times_one_tri: 890900000000,
+            order_size: 3850000000,
             commission_rate_bp: 10,
             empty_utxo: Some(UTxO {
                 input: Some(UtxoInput {
-                    output_index: 454,
-                    tx_hash: "7484ea8cca646ad42a357f6d5973563ce1914badf0a93e7acb0b41d4b136c440".to_string(),
+                    output_index: 314,
+                    tx_hash: "268896892a4e5d6fb004b235be696a990073e4984772eac156da83772a6ce176".to_string(),
                 }),
                 output: Some(UtxoOutput {
                     address: "addr_test1qra9zdhfa8kteyr3mfe7adkf5nlh8jl5xcg9e7pcp5w9yhyf5tek6vpnha97yd5yw9pezm3wyd77fyrfs3ynftyg7njs5cfz2x".to_string(),
@@ -337,46 +335,23 @@ mod tests {
                     script_hash: "".to_string(),
                 }),
             }),
-            dex_order_book_utxo: Some(UTxO {
-                input: Some(UtxoInput {
-                    output_index: 0,
-                    tx_hash: "0db4a1a918d1c3d0ddf7308542d43c1cb0e57420a4f75a4db21dbfe22ac22c3a".to_string(),
-                }),
-                output: Some(UtxoOutput {
-                    address: "addr_test1wrcdptezp2cdpn4gm0c72xljvzjgvapfnnvtsv34zuefe9q70mdxj".to_string(),
-                    amount: vec![
-                        Asset {
-                            unit: "lovelace".to_string(),
-                            quantity: "6000000".to_string(),
-                        },
-                        Asset {
-                            unit: "9ee27af30bcbcf1a399bfa531f5d9aef63f18c9ea761d5ce96ab3d6d".to_string(),
-                            quantity: "1".to_string(),
-                        },
-                    ],
-                    data_hash: "45150b1d8addbc0f37660b75235b6a305ae1bf236087a9263de3b77d60efd140".to_string(),
-                    plutus_data: "d8799f581cfa5136e9e9ecbc9071da73eeb6c9a4ff73cbf436105cf8380d1c525c581cc25ead27ea81d621dfb7c02dfda90264c5f4777e1e745f96c36aaa15d8799fd8799f504f6ca5a7f28b45e7949d556740c69c0cd8799f581c04845038ee499ee8bc0afe56f688f27b2dd76f230d3698a9afcc1b66ffd8799f581cb21f857716821354725bc2bd255dc2e5d5fdfa202556039b76c080a5ffff581c832b66dd9fa4fddab9d76b47a9e6f9a2b538c053e3a0b42d347a12e2ff58200000000000000000000000000000000000000000000000000000000000000000581ce1808a4ae0d35578a215cd68cf63b86ee40759650ea4cde97fc8a05dd8799fd87a9f581cda2156330d5ac0c69125eea74b41e58dd14a80a78b71e7b9add8eb4effd87a80ff581c9ee27af30bcbcf1a399bfa531f5d9aef63f18c9ea761d5ce96ab3d6dd8799fd87a9f581cf0d0af220ab0d0cea8dbf1e51bf260a48674299cd8b8323517329c94ffd87a80ff581c333a05dd70f3eddbf56d5441d75e8a513c6baee7aebe5057351ae85f581cbef30f7146f3370715356f4f88c64928d62708afec6796ddf1070b88581c832b66dd9fa4fddab9d76b47a9e6f9a2b538c053e3a0b42d347a12e2581cb28603ecb7ab3818bac7dc5f7f9260652443bbc1a471afb90c7fc816ff".to_string(),
-                    script_ref: "".to_string(),
-                    script_hash: "".to_string(),
-                }),
-            }),
+            dex_order_book_utxo: Some(dex_order_book_utxo),
             authorized_account_value_l1: vec![Asset {
-                unit: "c69b981db7a65e339a6d783755f85a2e03afa1cece9714c55fe4c9135553444d".to_string(),
-                quantity: "6583500".to_string(),
+                unit: "lovelace".to_string(),
+                quantity: "3850000000".to_string(),
             }],
             base_token_unit: "lovelace".to_string(),
             quote_token_unit: "c69b981db7a65e339a6d783755f85a2e03afa1cece9714c55fe4c9135553444d".to_string(),
-            order_type: OrderType::Limit as i32,
+            order_type: OrderType::Market as i32,
         };
 
         let config = AppConfig::new();
-        let scripts = ScriptCache::new();
 
         let result = handler(request, &config, &scripts).await;
 
         match result {
             Ok(response) => {
-                println!("=== Place Order Result (Case 2) ===");
+                println!("=== Place Order Result (Market Sell) ===");
                 println!("Tx Hash: {}", response.tx_hash);
                 println!("Tx Index: {}", response.tx_index);
                 println!(
