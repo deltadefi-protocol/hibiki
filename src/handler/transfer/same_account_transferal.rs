@@ -128,9 +128,13 @@ pub async fn handler(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::test_fixtures::{
+        build_account_balance_utxo, build_collateral_utxo, build_dex_order_book_utxo,
+        L2ScriptConfig,
+    };
     use crate::test_utils::init_test_env;
     use crate::utils::wallet::get_app_owner_wallet;
-    use hibiki_proto::services::{AccountInfo, Asset, BalanceUtxos, UTxO, UtxoInput, UtxoOutput};
+    use hibiki_proto::services::{AccountInfo, Asset, BalanceUtxos};
 
     #[test]
     fn test_same_account_transferal() {
@@ -151,7 +155,10 @@ mod tests {
     async fn test_same_account_transferal_case_1() {
         init_test_env();
 
-        let account = AccountInfo {
+        let scripts = ScriptCache::new();
+        let l2_config = L2ScriptConfig::default();
+
+        let account_info = AccountInfo {
             account_id: "326b8949-4e38-47c2-8887-23e7c5d3d654".to_string(),
             account_type: "spot_account".to_string(),
             master_key: "04845038ee499ee8bc0afe56f688f27b2dd76f230d3698a9afcc1b66".to_string(),
@@ -159,190 +166,67 @@ mod tests {
             operation_key: "b21f857716821354725bc2bd255dc2e5d5fdfa202556039b76c080a5".to_string(),
             is_script_operation_key: false,
         };
+        let user_account = UserAccount::from_proto_trade_account(
+            &account_info,
+            &scripts.hydra_order_book_withdrawal.hash,
+        );
+
+        // Build dex_order_book_utxo dynamically
+        let dex_order_book_utxo = build_dex_order_book_utxo(
+            &scripts,
+            &l2_config,
+            "92618472886c4d9c90b39d700371a97aa1164ac8103609577035e96f7791998c",
+            0,
+            &user_account,
+        )
+        .expect("Failed to build dex_order_book_utxo");
+
+        // Build account balance UTxOs dynamically
+        // All UTxOs have the same L2 token (USDM) but different quantities
+        let hydra_token_hash = &scripts.hydra_token_mint.hash;
+        // USDM L2 token name (hash of c69b981db7a65e339a6d783755f85a2e03afa1cece9714c55fe4c9135553444d)
+        let usdm_l2_name = "ae67ab5990f1d43f7f7ed7916888deeef55b8b27d4d155a2c6192601f1566f4e";
+        let l2_unit = format!("{}{}", hydra_token_hash, usdm_l2_name);
+
+        // (tx_hash, output_index, quantity)
+        let balance_utxo_data = vec![
+            ("eb22bac72f0c70b20a3f5f4ba958c46f7af00c1a886b94e73cae8d62193bb979", 2u32, "1321"),
+            ("4e9644edf42b5c57e15ad1e4fb8e0e7b834223b648d6cc267c2953e680c1f24b", 4, "1745"),
+            ("5fe49cf6ebccb104c4072bc83bcfcc4ef53a389bb99285eb1ac242d76039570b", 4, "1211"),
+            ("45a7cae12dfc8c5c183d882de265adab5f47436c89b952e9a407fb7a9a81dae8", 4, "1235"),
+            ("c08f45e13eebdb9657612066c69181ee41975b9f9ed4a39b3cb00274f13d6e43", 4, "1024"),
+            ("b1489b2877a4305c91deb3bf56ea871db390571622cbf87199cc36f4bef4b786", 4, "1606"),
+            ("e4341bf07f63dbe21e236655926063e1074da3987a986ac249f27ccee50e1875", 4, "683"),
+            ("abbc606ff1d23538b5740883ea415340ce4fc4ab37fbca9593dafbea26c889d8", 4, "1838"),
+        ];
+
+        let mut account_balance_utxos = Vec::new();
+        for (tx_hash, output_index, quantity) in &balance_utxo_data {
+            let balance_asset = Asset {
+                unit: l2_unit.clone(),
+                quantity: quantity.to_string(),
+            };
+            let utxo = build_account_balance_utxo(
+                &scripts,
+                tx_hash,
+                *output_index,
+                &user_account,
+                &balance_asset,
+            )
+            .expect("Failed to build account_balance_utxo");
+            account_balance_utxos.push(utxo);
+        }
 
         let request = SameAccountTransferalRequest {
             address: "addr_test1qqzgg5pcaeyea69uptl9da5g7fajm4m0yvxndx9f4lxpkehqgezy0s04rtdwlc0tlvxafpdrfxnsg7ww68ge3j7l0lnszsw2wt".to_string(),
-            account: Some(account),
-            collateral_utxo: Some(UTxO {
-                input: Some(UtxoInput {
-                    output_index: 0,
-                    tx_hash: "91fddaab7baf528c4c67c67da8bf20e1de482037b78fb836963de24fdee3d45f".to_string(),
-                }),
-                output: Some(UtxoOutput {
-                    address: "addr_test1vra9zdhfa8kteyr3mfe7adkf5nlh8jl5xcg9e7pcp5w9yhq5exvwh".to_string(),
-                    amount: vec![Asset {
-                        unit: "lovelace".to_string(),
-                        quantity: "10000000".to_string(),
-                    }],
-                    data_hash: "".to_string(),
-                    plutus_data: "".to_string(),
-                    script_ref: "".to_string(),
-                    script_hash: "".to_string(),
-                }),
-            }),
+            account: Some(account_info),
+            collateral_utxo: Some(build_collateral_utxo(
+                "91fddaab7baf528c4c67c67da8bf20e1de482037b78fb836963de24fdee3d45f",
+                0,
+                "10000000",
+            )),
             account_balance_utxos: Some(BalanceUtxos {
-                utxos: vec![
-                    UTxO {
-                        input: Some(UtxoInput {
-                            output_index: 2,
-                            tx_hash: "eb22bac72f0c70b20a3f5f4ba958c46f7af00c1a886b94e73cae8d62193bb979".to_string(),
-                        }),
-                        output: Some(UtxoOutput {
-                            address: "addr_test1wzl0xrm3gmenwpc4x4h5lzxxfy5dvfcg4lkx09ka7yrshzqpkt4dh".to_string(),
-                            amount: vec![
-                                Asset { unit: "lovelace".to_string(), quantity: "0".to_string() },
-                                Asset {
-                                    unit: "b28603ecb7ab3818bac7dc5f7f9260652443bbc1a471afb90c7fc816ae67ab5990f1d43f7f7ed7916888deeef55b8b27d4d155a2c6192601f1566f4e".to_string(),
-                                    quantity: "1321".to_string(),
-                                },
-                            ],
-                            data_hash: "5ea685b640054e1dc6db005d22b05000410a549a0ca850dd250a95c441c0fd8e".to_string(),
-                            plutus_data: "d8799fd8799f50326b89494e3847c2888723e7c5d3d654d8799f581c04845038ee499ee8bc0afe56f688f27b2dd76f230d3698a9afcc1b66ffd8799f581cb21f857716821354725bc2bd255dc2e5d5fdfa202556039b76c080a5ffff581c832b66dd9fa4fddab9d76b47a9e6f9a2b538c053e3a0b42d347a12e2ff".to_string(),
-                            script_ref: "".to_string(),
-                            script_hash: "".to_string(),
-                        }),
-                    },
-                    UTxO {
-                        input: Some(UtxoInput {
-                            output_index: 4,
-                            tx_hash: "4e9644edf42b5c57e15ad1e4fb8e0e7b834223b648d6cc267c2953e680c1f24b".to_string(),
-                        }),
-                        output: Some(UtxoOutput {
-                            address: "addr_test1wzl0xrm3gmenwpc4x4h5lzxxfy5dvfcg4lkx09ka7yrshzqpkt4dh".to_string(),
-                            amount: vec![
-                                Asset { unit: "lovelace".to_string(), quantity: "0".to_string() },
-                                Asset {
-                                    unit: "b28603ecb7ab3818bac7dc5f7f9260652443bbc1a471afb90c7fc816ae67ab5990f1d43f7f7ed7916888deeef55b8b27d4d155a2c6192601f1566f4e".to_string(),
-                                    quantity: "1745".to_string(),
-                                },
-                            ],
-                            data_hash: "5ea685b640054e1dc6db005d22b05000410a549a0ca850dd250a95c441c0fd8e".to_string(),
-                            plutus_data: "d8799fd8799f50326b89494e3847c2888723e7c5d3d654d8799f581c04845038ee499ee8bc0afe56f688f27b2dd76f230d3698a9afcc1b66ffd8799f581cb21f857716821354725bc2bd255dc2e5d5fdfa202556039b76c080a5ffff581c832b66dd9fa4fddab9d76b47a9e6f9a2b538c053e3a0b42d347a12e2ff".to_string(),
-                            script_ref: "".to_string(),
-                            script_hash: "".to_string(),
-                        }),
-                    },
-                    UTxO {
-                        input: Some(UtxoInput {
-                            output_index: 4,
-                            tx_hash: "5fe49cf6ebccb104c4072bc83bcfcc4ef53a389bb99285eb1ac242d76039570b".to_string(),
-                        }),
-                        output: Some(UtxoOutput {
-                            address: "addr_test1wzl0xrm3gmenwpc4x4h5lzxxfy5dvfcg4lkx09ka7yrshzqpkt4dh".to_string(),
-                            amount: vec![
-                                Asset { unit: "lovelace".to_string(), quantity: "0".to_string() },
-                                Asset {
-                                    unit: "b28603ecb7ab3818bac7dc5f7f9260652443bbc1a471afb90c7fc816ae67ab5990f1d43f7f7ed7916888deeef55b8b27d4d155a2c6192601f1566f4e".to_string(),
-                                    quantity: "1211".to_string(),
-                                },
-                            ],
-                            data_hash: "5ea685b640054e1dc6db005d22b05000410a549a0ca850dd250a95c441c0fd8e".to_string(),
-                            plutus_data: "d8799fd8799f50326b89494e3847c2888723e7c5d3d654d8799f581c04845038ee499ee8bc0afe56f688f27b2dd76f230d3698a9afcc1b66ffd8799f581cb21f857716821354725bc2bd255dc2e5d5fdfa202556039b76c080a5ffff581c832b66dd9fa4fddab9d76b47a9e6f9a2b538c053e3a0b42d347a12e2ff".to_string(),
-                            script_ref: "".to_string(),
-                            script_hash: "".to_string(),
-                        }),
-                    },
-                    UTxO {
-                        input: Some(UtxoInput {
-                            output_index: 4,
-                            tx_hash: "45a7cae12dfc8c5c183d882de265adab5f47436c89b952e9a407fb7a9a81dae8".to_string(),
-                        }),
-                        output: Some(UtxoOutput {
-                            address: "addr_test1wzl0xrm3gmenwpc4x4h5lzxxfy5dvfcg4lkx09ka7yrshzqpkt4dh".to_string(),
-                            amount: vec![
-                                Asset { unit: "lovelace".to_string(), quantity: "0".to_string() },
-                                Asset {
-                                    unit: "b28603ecb7ab3818bac7dc5f7f9260652443bbc1a471afb90c7fc816ae67ab5990f1d43f7f7ed7916888deeef55b8b27d4d155a2c6192601f1566f4e".to_string(),
-                                    quantity: "1235".to_string(),
-                                },
-                            ],
-                            data_hash: "5ea685b640054e1dc6db005d22b05000410a549a0ca850dd250a95c441c0fd8e".to_string(),
-                            plutus_data: "d8799fd8799f50326b89494e3847c2888723e7c5d3d654d8799f581c04845038ee499ee8bc0afe56f688f27b2dd76f230d3698a9afcc1b66ffd8799f581cb21f857716821354725bc2bd255dc2e5d5fdfa202556039b76c080a5ffff581c832b66dd9fa4fddab9d76b47a9e6f9a2b538c053e3a0b42d347a12e2ff".to_string(),
-                            script_ref: "".to_string(),
-                            script_hash: "".to_string(),
-                        }),
-                    },
-                    UTxO {
-                        input: Some(UtxoInput {
-                            output_index: 4,
-                            tx_hash: "c08f45e13eebdb9657612066c69181ee41975b9f9ed4a39b3cb00274f13d6e43".to_string(),
-                        }),
-                        output: Some(UtxoOutput {
-                            address: "addr_test1wzl0xrm3gmenwpc4x4h5lzxxfy5dvfcg4lkx09ka7yrshzqpkt4dh".to_string(),
-                            amount: vec![
-                                Asset { unit: "lovelace".to_string(), quantity: "0".to_string() },
-                                Asset {
-                                    unit: "b28603ecb7ab3818bac7dc5f7f9260652443bbc1a471afb90c7fc816ae67ab5990f1d43f7f7ed7916888deeef55b8b27d4d155a2c6192601f1566f4e".to_string(),
-                                    quantity: "1024".to_string(),
-                                },
-                            ],
-                            data_hash: "5ea685b640054e1dc6db005d22b05000410a549a0ca850dd250a95c441c0fd8e".to_string(),
-                            plutus_data: "d8799fd8799f50326b89494e3847c2888723e7c5d3d654d8799f581c04845038ee499ee8bc0afe56f688f27b2dd76f230d3698a9afcc1b66ffd8799f581cb21f857716821354725bc2bd255dc2e5d5fdfa202556039b76c080a5ffff581c832b66dd9fa4fddab9d76b47a9e6f9a2b538c053e3a0b42d347a12e2ff".to_string(),
-                            script_ref: "".to_string(),
-                            script_hash: "".to_string(),
-                        }),
-                    },
-                    UTxO {
-                        input: Some(UtxoInput {
-                            output_index: 4,
-                            tx_hash: "b1489b2877a4305c91deb3bf56ea871db390571622cbf87199cc36f4bef4b786".to_string(),
-                        }),
-                        output: Some(UtxoOutput {
-                            address: "addr_test1wzl0xrm3gmenwpc4x4h5lzxxfy5dvfcg4lkx09ka7yrshzqpkt4dh".to_string(),
-                            amount: vec![
-                                Asset { unit: "lovelace".to_string(), quantity: "0".to_string() },
-                                Asset {
-                                    unit: "b28603ecb7ab3818bac7dc5f7f9260652443bbc1a471afb90c7fc816ae67ab5990f1d43f7f7ed7916888deeef55b8b27d4d155a2c6192601f1566f4e".to_string(),
-                                    quantity: "1606".to_string(),
-                                },
-                            ],
-                            data_hash: "5ea685b640054e1dc6db005d22b05000410a549a0ca850dd250a95c441c0fd8e".to_string(),
-                            plutus_data: "d8799fd8799f50326b89494e3847c2888723e7c5d3d654d8799f581c04845038ee499ee8bc0afe56f688f27b2dd76f230d3698a9afcc1b66ffd8799f581cb21f857716821354725bc2bd255dc2e5d5fdfa202556039b76c080a5ffff581c832b66dd9fa4fddab9d76b47a9e6f9a2b538c053e3a0b42d347a12e2ff".to_string(),
-                            script_ref: "".to_string(),
-                            script_hash: "".to_string(),
-                        }),
-                    },
-                    UTxO {
-                        input: Some(UtxoInput {
-                            output_index: 4,
-                            tx_hash: "e4341bf07f63dbe21e236655926063e1074da3987a986ac249f27ccee50e1875".to_string(),
-                        }),
-                        output: Some(UtxoOutput {
-                            address: "addr_test1wzl0xrm3gmenwpc4x4h5lzxxfy5dvfcg4lkx09ka7yrshzqpkt4dh".to_string(),
-                            amount: vec![
-                                Asset { unit: "lovelace".to_string(), quantity: "0".to_string() },
-                                Asset {
-                                    unit: "b28603ecb7ab3818bac7dc5f7f9260652443bbc1a471afb90c7fc816ae67ab5990f1d43f7f7ed7916888deeef55b8b27d4d155a2c6192601f1566f4e".to_string(),
-                                    quantity: "683".to_string(),
-                                },
-                            ],
-                            data_hash: "5ea685b640054e1dc6db005d22b05000410a549a0ca850dd250a95c441c0fd8e".to_string(),
-                            plutus_data: "d8799fd8799f50326b89494e3847c2888723e7c5d3d654d8799f581c04845038ee499ee8bc0afe56f688f27b2dd76f230d3698a9afcc1b66ffd8799f581cb21f857716821354725bc2bd255dc2e5d5fdfa202556039b76c080a5ffff581c832b66dd9fa4fddab9d76b47a9e6f9a2b538c053e3a0b42d347a12e2ff".to_string(),
-                            script_ref: "".to_string(),
-                            script_hash: "".to_string(),
-                        }),
-                    },
-                    UTxO {
-                        input: Some(UtxoInput {
-                            output_index: 4,
-                            tx_hash: "abbc606ff1d23538b5740883ea415340ce4fc4ab37fbca9593dafbea26c889d8".to_string(),
-                        }),
-                        output: Some(UtxoOutput {
-                            address: "addr_test1wzl0xrm3gmenwpc4x4h5lzxxfy5dvfcg4lkx09ka7yrshzqpkt4dh".to_string(),
-                            amount: vec![
-                                Asset { unit: "lovelace".to_string(), quantity: "0".to_string() },
-                                Asset {
-                                    unit: "b28603ecb7ab3818bac7dc5f7f9260652443bbc1a471afb90c7fc816ae67ab5990f1d43f7f7ed7916888deeef55b8b27d4d155a2c6192601f1566f4e".to_string(),
-                                    quantity: "1838".to_string(),
-                                },
-                            ],
-                            data_hash: "5ea685b640054e1dc6db005d22b05000410a549a0ca850dd250a95c441c0fd8e".to_string(),
-                            plutus_data: "d8799fd8799f50326b89494e3847c2888723e7c5d3d654d8799f581c04845038ee499ee8bc0afe56f688f27b2dd76f230d3698a9afcc1b66ffd8799f581cb21f857716821354725bc2bd255dc2e5d5fdfa202556039b76c080a5ffff581c832b66dd9fa4fddab9d76b47a9e6f9a2b538c053e3a0b42d347a12e2ff".to_string(),
-                            script_ref: "".to_string(),
-                            script_hash: "".to_string(),
-                        }),
-                    },
-                ],
+                utxos: account_balance_utxos,
                 updated_balance_l1: vec![
                     Asset {
                         unit: "c69b981db7a65e339a6d783755f85a2e03afa1cece9714c55fe4c9135553444d".to_string(),
@@ -350,26 +234,7 @@ mod tests {
                     },
                 ],
             }),
-            dex_order_book_utxo: Some(UTxO {
-                input: Some(UtxoInput {
-                    output_index: 0,
-                    tx_hash: "92618472886c4d9c90b39d700371a97aa1164ac8103609577035e96f7791998c".to_string(),
-                }),
-                output: Some(UtxoOutput {
-                    address: "addr_test1wrcdptezp2cdpn4gm0c72xljvzjgvapfnnvtsv34zuefe9q70mdxj".to_string(),
-                    amount: vec![
-                        Asset { unit: "lovelace".to_string(), quantity: "6000000".to_string() },
-                        Asset {
-                            unit: "9ee27af30bcbcf1a399bfa531f5d9aef63f18c9ea761d5ce96ab3d6d".to_string(),
-                            quantity: "1".to_string(),
-                        },
-                    ],
-                    data_hash: "93fc6a09dc385a32ab604ef5bdcfec071121e05f2281fe207168fa576714a371".to_string(),
-                    plutus_data: "d8799f581cfa5136e9e9ecbc9071da73eeb6c9a4ff73cbf436105cf8380d1c525c581cc25ead27ea81d621dfb7c02dfda90264c5f4777e1e745f96c36aaa15d8799fd8799f50326b89494e3847c2888723e7c5d3d654d8799f581c04845038ee499ee8bc0afe56f688f27b2dd76f230d3698a9afcc1b66ffd8799f581cb21f857716821354725bc2bd255dc2e5d5fdfa202556039b76c080a5ffff581c832b66dd9fa4fddab9d76b47a9e6f9a2b538c053e3a0b42d347a12e2ff58200000000000000000000000000000000000000000000000000000000000000000581ce1808a4ae0d35578a215cd68cf63b86ee40759650ea4cde97fc8a05dd8799fd87a9f581cda2156330d5ac0c69125eea74b41e58dd14a80a78b71e7b9add8eb4effd87a80ff581c9ee27af30bcbcf1a399bfa531f5d9aef63f18c9ea761d5ce96ab3d6dd8799fd87a9f581cf0d0af220ab0d0cea8dbf1e51bf260a48674299cd8b8323517329c94ffd87a80ff581c333a05dd70f3eddbf56d5441d75e8a513c6baee7aebe5057351ae85f581cbef30f7146f3370715356f4f88c64928d62708afec6796ddf1070b88581c832b66dd9fa4fddab9d76b47a9e6f9a2b538c053e3a0b42d347a12e2581cb28603ecb7ab3818bac7dc5f7f9260652443bbc1a471afb90c7fc816ff".to_string(),
-                    script_ref: "".to_string(),
-                    script_hash: "".to_string(),
-                }),
-            }),
+            dex_order_book_utxo: Some(dex_order_book_utxo),
         };
 
         println!("=== Input Data ===");
@@ -384,7 +249,6 @@ mod tests {
         );
 
         let config = AppConfig::new();
-        let scripts = ScriptCache::new();
         let app_owner_wallet = get_app_owner_wallet();
         let result = handler(request, &app_owner_wallet, &config, &scripts).await;
 

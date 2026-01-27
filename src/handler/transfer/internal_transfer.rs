@@ -106,7 +106,8 @@ mod tests {
     use hibiki_proto::services::{AccountInfo, Asset, UTxO, UtxoInput, UtxoOutput};
 
     use super::*;
-    use crate::scripts::ScriptCache;
+    use crate::scripts::{ScriptCache, UserAccount};
+    use crate::test_fixtures::{build_collateral_utxo, build_dex_order_book_utxo, L2ScriptConfig};
     use crate::test_utils::init_test_env;
 
     #[test]
@@ -127,6 +128,33 @@ mod tests {
 
     async fn test_internal_transfer_case_1() {
         init_test_env();
+
+        let scripts = ScriptCache::new();
+        let l2_config = L2ScriptConfig::default();
+
+        // Create a fee account for the dex_order_book_utxo datum
+        let fee_account_info = AccountInfo {
+            account_id: "a810ec7a-7069-4157-aead-48ecf4d693c8".to_string(),
+            account_type: "spot_account".to_string(),
+            master_key: "04845038ee499ee8bc0afe56f688f27b2dd76f230d3698a9afcc1b66".to_string(),
+            is_script_master_key: false,
+            operation_key: "b21f857716821354725bc2bd255dc2e5d5fdfa202556039b76c080a5".to_string(),
+            is_script_operation_key: false,
+        };
+        let fee_account = UserAccount::from_proto_trade_account(
+            &fee_account_info,
+            &scripts.hydra_order_book_withdrawal.hash,
+        );
+
+        // Build dex_order_book_utxo dynamically with current script hashes
+        let dex_order_book_utxo = build_dex_order_book_utxo(
+            &scripts,
+            &l2_config,
+            "92618472886c4d9c90b39d700371a97aa1164ac8103609577035e96f7791998c",
+            0,
+            &fee_account,
+        )
+        .expect("Failed to build dex_order_book_utxo");
 
         let request = InternalTransferRequest {
             account: Some(AccountInfo {
@@ -172,23 +200,11 @@ mod tests {
                 },
             ],
             address: "addr_test1qp96dhfygf2ejktf6tq9uv3ks67t4w5rkumww2v5rqja0xcx8ls6mu88ytwql66750at9at4apy4jdezhu22artnvlys7ec2gm".to_string(),
-            collateral_utxo: Some(UTxO {
-                input: Some(UtxoInput {
-                    output_index: 0,
-                    tx_hash: "91fddaab7baf528c4c67c67da8bf20e1de482037b78fb836963de24fdee3d45f".to_string(),
-                }),
-                output: Some(UtxoOutput {
-                    address: "addr_test1vra9zdhfa8kteyr3mfe7adkf5nlh8jl5xcg9e7pcp5w9yhq5exvwh".to_string(),
-                    amount: vec![Asset {
-                        unit: "lovelace".to_string(),
-                        quantity: "10000000".to_string(),
-                    }],
-                    data_hash: "".to_string(),
-                    plutus_data: "".to_string(),
-                    script_ref: "".to_string(),
-                    script_hash: "".to_string(),
-                }),
-            }),
+            collateral_utxo: Some(build_collateral_utxo(
+                "91fddaab7baf528c4c67c67da8bf20e1de482037b78fb836963de24fdee3d45f",
+                0,
+                "10000000",
+            )),
             empty_utxo: Some(UTxO {
                 input: Some(UtxoInput {
                     output_index: 1,
@@ -206,33 +222,10 @@ mod tests {
                     script_hash: "".to_string(),
                 }),
             }),
-            dex_order_book_utxo: Some(UTxO {
-                input: Some(UtxoInput {
-                    output_index: 0,
-                    tx_hash: "92618472886c4d9c90b39d700371a97aa1164ac8103609577035e96f7791998c".to_string(),
-                }),
-                output: Some(UtxoOutput {
-                    address: "addr_test1wrcdptezp2cdpn4gm0c72xljvzjgvapfnnvtsv34zuefe9q70mdxj".to_string(),
-                    amount: vec![
-                        Asset {
-                            unit: "lovelace".to_string(),
-                            quantity: "6000000".to_string(),
-                        },
-                        Asset {
-                            unit: "9ee27af30bcbcf1a399bfa531f5d9aef63f18c9ea761d5ce96ab3d6d".to_string(),
-                            quantity: "1".to_string(),
-                        },
-                    ],
-                    data_hash: "93fc6a09dc385a32ab604ef5bdcfec071121e05f2281fe207168fa576714a371".to_string(),
-                    plutus_data: "d8799f581cfa5136e9e9ecbc9071da73eeb6c9a4ff73cbf436105cf8380d1c525c581cc25ead27ea81d621dfb7c02dfda90264c5f4777e1e745f96c36aaa15d8799fd8799f50326b89494e3847c2888723e7c5d3d654d8799f581c04845038ee499ee8bc0afe56f688f27b2dd76f230d3698a9afcc1b66ffd8799f581cb21f857716821354725bc2bd255dc2e5d5fdfa202556039b76c080a5ffff581c832b66dd9fa4fddab9d76b47a9e6f9a2b538c053e3a0b42d347a12e2ff58200000000000000000000000000000000000000000000000000000000000000000581ce1808a4ae0d35578a215cd68cf63b86ee40759650ea4cde97fc8a05dd8799fd87a9f581cda2156330d5ac0c69125eea74b41e58dd14a80a78b71e7b9add8eb4effd87a80ff581c9ee27af30bcbcf1a399bfa531f5d9aef63f18c9ea761d5ce96ab3d6dd8799fd87a9f581cf0d0af220ab0d0cea8dbf1e51bf260a48674299cd8b8323517329c94ffd87a80ff581c333a05dd70f3eddbf56d5441d75e8a513c6baee7aebe5057351ae85f581cbef30f7146f3370715356f4f88c64928d62708afec6796ddf1070b88581c832b66dd9fa4fddab9d76b47a9e6f9a2b538c053e3a0b42d347a12e2581cb28603ecb7ab3818bac7dc5f7f9260652443bbc1a471afb90c7fc816ff".to_string(),
-                    script_ref: "".to_string(),
-                    script_hash: "".to_string(),
-                }),
-            }),
+            dex_order_book_utxo: Some(dex_order_book_utxo),
         };
 
         let config = AppConfig::new();
-        let scripts = ScriptCache::new();
         let result = handler(request, &config, &scripts).await;
         println!("Result: {:?}", result);
         assert!(result.is_ok());

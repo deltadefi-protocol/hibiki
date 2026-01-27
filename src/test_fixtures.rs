@@ -16,7 +16,8 @@ use crate::scripts::bar::{
     dex_order_book_spend_spending_blueprint, oracle_nft_mint_minting_blueprint,
 };
 use crate::scripts::{
-    DexOrderBookDatum, HydraOrderBookIntent, HydraUserIntentDatum, ScriptCache, UserAccount,
+    DexOrderBookDatum, HydraAccountIntent, HydraOrderBookIntent, HydraUserIntentDatum, ScriptCache,
+    UserAccount,
 };
 use crate::utils::order::to_order_datum;
 use crate::utils::proto::{assets_to_mvalue, from_proto_amount};
@@ -353,6 +354,64 @@ pub fn build_account_balance_utxo(
                     quantity: "0".to_string(),
                 },
                 balance_asset.clone(),
+            ],
+            data_hash,
+            plutus_data,
+            script_ref: "".to_string(),
+            script_hash: "".to_string(),
+        }),
+    })
+}
+
+/// Build a transfer intent UTxO with proper address and datum.
+/// The address comes from user_intent_spend script.
+/// The datum is a HydraUserIntentDatum<HydraAccountIntent>::MasterIntent containing
+/// the from_account and TransferIntent with to_account and transfer amounts.
+pub fn build_transfer_intent_utxo(
+    scripts: &ScriptCache,
+    tx_hash: &str,
+    output_index: u32,
+    from_account: &UserAccount,
+    to_account: &UserAccount,
+    transfer_amounts_l1: &[Asset],
+) -> Result<UTxO, String> {
+    // Convert L1 transfer amounts to L2 hydra tokens
+    let transfer_amount_l2 = assets_to_mvalue(&to_hydra_token(&from_proto_amount(transfer_amounts_l1)));
+
+    // Build the transfer intent
+    let hydra_account_intent =
+        HydraAccountIntent::TransferIntent(Box::new((to_account.clone(), transfer_amount_l2)));
+    let intent = HydraUserIntentDatum::MasterIntent(Box::new((
+        from_account.clone(),
+        hydra_account_intent,
+    )));
+
+    // Serialize datum to CBOR hex
+    let datum_wdata = WData::JSON(intent.to_json_string());
+    let plutus_data = datum_wdata
+        .to_cbor()
+        .map_err(|e| format!("Failed to encode transfer intent datum: {:?}", e))?;
+    let data_hash = datum_wdata
+        .to_hash()
+        .map_err(|e| format!("Failed to hash transfer intent datum: {:?}", e))?;
+
+    // Build the UTxO with user_intent_spend address and user_intent_mint NFT
+    Ok(UTxO {
+        input: Some(UtxoInput {
+            output_index,
+            tx_hash: tx_hash.to_string(),
+        }),
+        output: Some(UtxoOutput {
+            address: scripts.user_intent_spend.address.clone(),
+            amount: vec![
+                Asset {
+                    unit: "lovelace".to_string(),
+                    quantity: "0".to_string(),
+                },
+                Asset {
+                    unit: scripts.user_intent_mint.hash.clone(),
+                    quantity: "1".to_string(),
+                },
             ],
             data_hash,
             plutus_data,
