@@ -1,10 +1,9 @@
-use hibiki_proto::services::UnitTxIndexMap;
 use std::collections::HashMap;
+
+use hibiki_proto::services::{AssetList, UnitTxIndexMap};
 use whisky::Asset;
 
-use hibiki_proto::services::AssetList;
-
-use crate::utils::proto::to_proto_amount;
+use super::{add_hyphens_to_map_keys, to_proto_amount};
 
 pub struct TxIndexAssetsMap {
     pub map: HashMap<String, AssetList>,
@@ -50,5 +49,51 @@ impl Default for TxIndexAssetsMap {
             map: HashMap::new(),
             current_index: 0,
         }
+    }
+}
+
+pub struct AccountTxIndexAssetsMap {
+    accounts: HashMap<String, (HashMap<String, AssetList>, String)>,
+    pub current_index: u32,
+}
+
+impl AccountTxIndexAssetsMap {
+    pub fn new() -> Self {
+        AccountTxIndexAssetsMap {
+            accounts: HashMap::new(),
+            current_index: 0,
+        }
+    }
+
+    /// Insert assets for an account at the current index
+    pub fn insert(&mut self, account_id: &str, user_account_json: &str, assets: &[Asset]) {
+        let entry = self
+            .accounts
+            .entry(account_id.to_string())
+            .or_insert_with(|| (HashMap::new(), user_account_json.to_string()));
+
+        entry.0.insert(
+            self.current_index.to_string(),
+            AssetList {
+                assets: to_proto_amount(assets),
+            },
+        );
+        self.current_index += 1;
+    }
+
+    pub fn to_proto(self) -> HashMap<String, UnitTxIndexMap> {
+        let map: HashMap<String, UnitTxIndexMap> = self
+            .accounts
+            .into_iter()
+            .map(|(account_id, (tx_index_map, _))| {
+                (
+                    account_id,
+                    UnitTxIndexMap {
+                        unit_tx_index_map: tx_index_map,
+                    },
+                )
+            })
+            .collect();
+        add_hyphens_to_map_keys(map)
     }
 }
