@@ -105,7 +105,7 @@ pub async fn handler(
             let l1_assets = to_l1_assets(std::slice::from_ref(&asset), all_hydra_to_l1_token_map())
                 .map_err(WError::from_err("to_l1_assets"))?;
 
-            account_tx_index_map.insert(&account_id, &user_account_json, &l1_assets);
+            account_tx_index_map.insert(&account_id, &l1_assets);
         }
     }
 

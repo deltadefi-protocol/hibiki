@@ -53,7 +53,7 @@ impl Default for TxIndexAssetsMap {
 }
 
 pub struct AccountTxIndexAssetsMap {
-    accounts: HashMap<String, (HashMap<String, AssetList>, String)>,
+    accounts: HashMap<String, HashMap<String, AssetList>>,
     pub current_index: u32,
 }
 
@@ -65,14 +65,13 @@ impl AccountTxIndexAssetsMap {
         }
     }
 
-    /// Insert assets for an account at the current index
-    pub fn insert(&mut self, account_id: &str, user_account_json: &str, assets: &[Asset]) {
+    pub fn insert(&mut self, account_id: &str, assets: &[Asset]) {
         let entry = self
             .accounts
             .entry(account_id.to_string())
-            .or_insert_with(|| (HashMap::new(), user_account_json.to_string()));
+            .or_insert_with(HashMap::new);
 
-        entry.0.insert(
+        entry.insert(
             self.current_index.to_string(),
             AssetList {
                 assets: to_proto_amount(assets),
@@ -85,7 +84,7 @@ impl AccountTxIndexAssetsMap {
         let map: HashMap<String, UnitTxIndexMap> = self
             .accounts
             .into_iter()
-            .map(|(account_id, (tx_index_map, _))| {
+            .map(|(account_id, tx_index_map)| {
                 (
                     account_id,
                     UnitTxIndexMap {
