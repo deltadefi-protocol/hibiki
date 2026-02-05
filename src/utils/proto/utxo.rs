@@ -2,6 +2,10 @@ use whisky::{UTxO, UtxoInput, UtxoOutput};
 
 use crate::utils::proto::from_proto_amount;
 
+pub fn from_proto_utxos(protos: &[hibiki_proto::services::UTxO]) -> Vec<UTxO> {
+    protos.iter().map(from_proto_utxo).collect()
+}
+
 pub fn from_proto_utxo(proto: &hibiki_proto::services::UTxO) -> UTxO {
     let proto_input = proto.input.as_ref().unwrap();
     let proto_output = proto.output.as_ref().unwrap();
