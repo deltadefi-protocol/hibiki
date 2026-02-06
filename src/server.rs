@@ -7,10 +7,10 @@ use hibiki::{
     config::AppConfig,
     grpc_metrics_interceptor::MetricsLayer,
     handler::{
-        cancel_all_account_orders, cancel_orders, fill_order, internal_transfer, modify_order,
-        place_order, process_modify_order, process_order, process_transfer,
-        same_account_transferal, serialize_transfer_intent_datum, sign_transaction,
-        sign_transaction_with_fee_collector,
+        burn_expired_intents, cancel_all_account_orders, cancel_orders, fill_order,
+        internal_transfer, modify_order, place_order, process_modify_order, process_order,
+        process_transfer, same_account_transferal, serialize_transfer_intent_datum,
+        sign_transaction, sign_transaction_with_fee_collector,
     },
     metrics, metrics_server,
     scripts::ScriptCache,
@@ -91,29 +91,6 @@ impl Hibiki for HibikiService {
         println!("Got a request - cancel_orders {:?}", request_result);
 
         let reply = match cancel_orders::handler(
-            request_result,
-            &self.app_owner_wallet,
-            &self.config,
-            &self.scripts,
-        )
-        .await
-        {
-            Ok(value) => value,
-            Err(e) => {
-                return Err(Status::failed_precondition(e.to_string()));
-            }
-        };
-        Ok(Response::new(reply))
-    }
-
-    async fn cancel_all_account_orders(
-        &self,
-        request: Request<services::CancelAllAccountOrdersRequest>,
-    ) -> Result<Response<services::CancelAllAccountOrdersResponse>, Status> {
-        let request_result = request.into_inner();
-        log::info!("Got a request - cancel_all_account_orders");
-
-        let reply = match cancel_all_account_orders::handler(
             request_result,
             &self.app_owner_wallet,
             &self.config,
@@ -241,6 +218,53 @@ impl Hibiki for HibikiService {
             request_result
         );
         let reply = match same_account_transferal::handler(
+            request_result,
+            &self.app_owner_wallet,
+            &self.config,
+            &self.scripts,
+        )
+        .await
+        {
+            Ok(value) => value,
+            Err(e) => {
+                return Err(Status::failed_precondition(e.to_string()));
+            }
+        };
+        Ok(Response::new(reply))
+    }
+
+    // Internal
+    async fn cancel_all_account_orders(
+        &self,
+        request: Request<services::CancelAllAccountOrdersRequest>,
+    ) -> Result<Response<services::CancelAllAccountOrdersResponse>, Status> {
+        let request_result = request.into_inner();
+        log::info!("Got a request - cancel_all_account_orders");
+
+        let reply = match cancel_all_account_orders::handler(
+            request_result,
+            &self.app_owner_wallet,
+            &self.config,
+            &self.scripts,
+        )
+        .await
+        {
+            Ok(value) => value,
+            Err(e) => {
+                return Err(Status::failed_precondition(e.to_string()));
+            }
+        };
+        Ok(Response::new(reply))
+    }
+
+    async fn burn_expired_intents(
+        &self,
+        request: Request<services::BurnExpiredIntentsRequest>,
+    ) -> Result<Response<services::BurnExpiredIntentsResponse>, Status> {
+        let request_result = request.into_inner();
+        log::info!("Got a request - burn_expired_intents");
+
+        let reply = match burn_expired_intents::handler(
             request_result,
             &self.app_owner_wallet,
             &self.config,
