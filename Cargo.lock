@@ -1348,7 +1348,7 @@ dependencies = [
 [[package]]
 name = "hibiki-proto"
 version = "0.2.0"
-source = "git+https://github.com/deltadefi-protocol/deltadefi-schema.git?tag=v1.4.23-feat-cancel-all-account-orders-1#0a0bf6512b333452cf896b14ec0dae71d873fedf"
+source = "git+https://github.com/deltadefi-protocol/deltadefi-schema.git?tag=v1.4.23-burn-expired-intents-1#a660a0b0c702fa3427a9fe7a6c85524c7fbfa0e8"
 dependencies = [
  "prost 0.12.6",
  "tonic 0.10.2",
