@@ -239,7 +239,10 @@ impl Hibiki for HibikiService {
         request: Request<services::CancelAllAccountOrdersRequest>,
     ) -> Result<Response<services::CancelAllAccountOrdersResponse>, Status> {
         let request_result = request.into_inner();
-        log::info!("Got a request - cancel_all_account_orders");
+        log::info!(
+            "Got a request - cancel_all_account_orders {:?}",
+            request_result
+        );
 
         let reply = match cancel_all_account_orders::handler(
             request_result,
@@ -262,7 +265,7 @@ impl Hibiki for HibikiService {
         request: Request<services::BurnExpiredIntentsRequest>,
     ) -> Result<Response<services::BurnExpiredIntentsResponse>, Status> {
         let request_result = request.into_inner();
-        log::info!("Got a request - burn_expired_intents");
+        log::info!("Got a request - burn_expired_intents {:?}", request_result);
 
         let reply = match burn_expired_intents::handler(
             request_result,
