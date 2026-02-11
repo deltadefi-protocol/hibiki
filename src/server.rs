@@ -4,12 +4,16 @@ use std::sync::Arc;
 use whisky::{calculate_tx_hash, Wallet};
 
 use hibiki::{
+    config::AppConfig,
     grpc_metrics_interceptor::MetricsLayer,
     handler::{
-        internal_transfer, process_transfer, serialize_transfer_intent_datum, sign_transaction,
-        sign_transaction_with_fee_collector,
+        burn_expired_intents, cancel_all_account_orders, cancel_orders, fill_order,
+        internal_transfer, modify_order, place_order, process_modify_order, process_order,
+        process_transfer, same_account_transferal, serialize_transfer_intent_datum,
+        sign_transaction, sign_transaction_with_fee_collector,
     },
     metrics, metrics_server,
+    scripts::ScriptCache,
     services::{
         self,
         hibiki_server::{Hibiki, HibikiServer},
@@ -23,6 +27,8 @@ use tonic::{transport::Server, Request, Response, Status};
 pub struct HibikiService {
     pub app_owner_wallet: Arc<Wallet>,
     pub fee_collector_wallet: Arc<Wallet>,
+    pub config: Arc<AppConfig>,
+    pub scripts: Arc<ScriptCache>,
 }
 
 #[tonic::async_trait]
@@ -37,6 +43,132 @@ impl Hibiki for HibikiService {
         Ok(Response::new(reply))
     }
 
+    // Trade
+    async fn place_order(
+        &self,
+        request: Request<services::PlaceOrderRequest>,
+    ) -> Result<Response<services::IntentTxResponse>, Status> {
+        let request_result = request.into_inner();
+        println!("Got a request - place_order {:?}", request_result);
+
+        let reply = match place_order::handler(request_result, &self.config, &self.scripts).await {
+            Ok(value) => value,
+            Err(e) => {
+                return Err(Status::failed_precondition(e.to_string()));
+            }
+        };
+        Ok(Response::new(reply))
+    }
+
+    async fn process_order(
+        &self,
+        request: Request<services::ProcessOrderRequest>,
+    ) -> Result<Response<services::ProcessOrderResponse>, Status> {
+        let request_result = request.into_inner();
+        println!("Got a request - process_order {:?}", request_result);
+
+        let reply = match process_order::handler(
+            request_result,
+            &self.app_owner_wallet,
+            &self.config,
+            &self.scripts,
+        )
+        .await
+        {
+            Ok(value) => value,
+            Err(e) => {
+                return Err(Status::failed_precondition(e.to_string()));
+            }
+        };
+        Ok(Response::new(reply))
+    }
+
+    async fn cancel_orders(
+        &self,
+        request: Request<services::CancelOrdersRequest>,
+    ) -> Result<Response<services::CancelOrdersResponse>, Status> {
+        let request_result = request.into_inner();
+        println!("Got a request - cancel_orders {:?}", request_result);
+
+        let reply = match cancel_orders::handler(
+            request_result,
+            &self.app_owner_wallet,
+            &self.config,
+            &self.scripts,
+        )
+        .await
+        {
+            Ok(value) => value,
+            Err(e) => {
+                return Err(Status::failed_precondition(e.to_string()));
+            }
+        };
+        Ok(Response::new(reply))
+    }
+
+    async fn modify_order(
+        &self,
+        request: Request<services::ModifyOrderRequest>,
+    ) -> Result<Response<services::IntentTxResponse>, Status> {
+        let request_result = request.into_inner();
+        println!("Got a request - place_order {:?}", request_result);
+
+        let reply = match modify_order::handler(request_result, &self.config, &self.scripts).await {
+            Ok(value) => value,
+            Err(e) => {
+                return Err(Status::failed_precondition(e.to_string()));
+            }
+        };
+        Ok(Response::new(reply))
+    }
+
+    async fn process_modify_order(
+        &self,
+        request: Request<services::ProcessModifyOrderRequest>,
+    ) -> Result<Response<services::ProcessModifyOrderResponse>, Status> {
+        let request_result = request.into_inner();
+        println!("Got a request - process_modify_order {:?}", request_result);
+
+        let reply = match process_modify_order::handler(
+            request_result,
+            &self.app_owner_wallet,
+            &self.config,
+            &self.scripts,
+        )
+        .await
+        {
+            Ok(value) => value,
+            Err(e) => {
+                return Err(Status::failed_precondition(e.to_string()));
+            }
+        };
+        Ok(Response::new(reply))
+    }
+
+    async fn fill_order(
+        &self,
+        request: Request<services::FillOrderRequest>,
+    ) -> Result<Response<services::FillOrderResponse>, Status> {
+        let request_result = request.into_inner();
+        println!("Got a request - fill_order {:?}", request_result);
+
+        let reply = match fill_order::handler(
+            request_result,
+            &self.app_owner_wallet,
+            &self.config,
+            &self.scripts,
+        )
+        .await
+        {
+            Ok(value) => value,
+            Err(e) => {
+                return Err(Status::failed_precondition(e.to_string()));
+            }
+        };
+        Ok(Response::new(reply))
+    }
+
+    // Transfer
     async fn internal_transfer(
         &self,
         request: Request<services::InternalTransferRequest>,
@@ -44,12 +176,13 @@ impl Hibiki for HibikiService {
         let request_result = request.into_inner();
         println!("Got a request - internal_transfer {:?}", request_result);
 
-        let reply = match internal_transfer::handler(request_result).await {
-            Ok(value) => value,
-            Err(e) => {
-                return Err(Status::failed_precondition(e.to_string()));
-            }
-        };
+        let reply =
+            match internal_transfer::handler(request_result, &self.config, &self.scripts).await {
+                Ok(value) => value,
+                Err(e) => {
+                    return Err(Status::failed_precondition(e.to_string()));
+                }
+            };
         Ok(Response::new(reply))
     }
 
@@ -59,7 +192,14 @@ impl Hibiki for HibikiService {
     ) -> Result<Response<services::ProcessTransferResponse>, Status> {
         let request_result = request.into_inner();
         println!("Got a request - process_transfer {:?}", request_result);
-        let reply = match process_transfer::handler(request_result, &self.app_owner_wallet).await {
+        let reply = match process_transfer::handler(
+            request_result,
+            &self.app_owner_wallet,
+            &self.config,
+            &self.scripts,
+        )
+        .await
+        {
             Ok(value) => value,
             Err(e) => {
                 return Err(Status::failed_precondition(e.to_string()));
@@ -68,13 +208,89 @@ impl Hibiki for HibikiService {
         Ok(Response::new(reply))
     }
 
+    async fn same_account_transferal(
+        &self,
+        request: Request<services::SameAccountTransferalRequest>,
+    ) -> Result<Response<services::SameAccountTransferalResponse>, Status> {
+        let request_result = request.into_inner();
+        println!(
+            "Got a request - same_account_transferal {:?}",
+            request_result
+        );
+        let reply = match same_account_transferal::handler(
+            request_result,
+            &self.app_owner_wallet,
+            &self.config,
+            &self.scripts,
+        )
+        .await
+        {
+            Ok(value) => value,
+            Err(e) => {
+                return Err(Status::failed_precondition(e.to_string()));
+            }
+        };
+        Ok(Response::new(reply))
+    }
+
+    // Internal
+    async fn cancel_all_account_orders(
+        &self,
+        request: Request<services::CancelAllAccountOrdersRequest>,
+    ) -> Result<Response<services::CancelAllAccountOrdersResponse>, Status> {
+        let request_result = request.into_inner();
+        log::info!(
+            "Got a request - cancel_all_account_orders {:?}",
+            request_result
+        );
+
+        let reply = match cancel_all_account_orders::handler(
+            request_result,
+            &self.app_owner_wallet,
+            &self.config,
+            &self.scripts,
+        )
+        .await
+        {
+            Ok(value) => value,
+            Err(e) => {
+                return Err(Status::failed_precondition(e.to_string()));
+            }
+        };
+        Ok(Response::new(reply))
+    }
+
+    async fn burn_expired_intents(
+        &self,
+        request: Request<services::BurnExpiredIntentsRequest>,
+    ) -> Result<Response<services::BurnExpiredIntentsResponse>, Status> {
+        let request_result = request.into_inner();
+        log::info!("Got a request - burn_expired_intents {:?}", request_result);
+
+        let reply = match burn_expired_intents::handler(
+            request_result,
+            &self.app_owner_wallet,
+            &self.config,
+            &self.scripts,
+        )
+        .await
+        {
+            Ok(value) => value,
+            Err(e) => {
+                return Err(Status::failed_precondition(e.to_string()));
+            }
+        };
+        Ok(Response::new(reply))
+    }
+
+    // Utils
     async fn serialize_transferal_intent_datum(
         &self,
         request: Request<services::SerializeTransferalIntentDatumRequest>,
     ) -> Result<Response<services::SerializeDatumResponse>, Status> {
         println!("Got a request - serialize_transferal_intent_datum");
         let request_result = request.into_inner();
-        let reply = match serialize_transfer_intent_datum::handler(request_result) {
+        let reply = match serialize_transfer_intent_datum::handler(request_result, &self.scripts) {
             Ok(value) => value,
             Err(e) => {
                 return Err(Status::failed_precondition(e.to_string()));
@@ -143,6 +359,9 @@ impl Hibiki for HibikiService {
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     dotenv().ok();
 
+    // Initialize logger - default to info level, can be overridden with RUST_LOG env var
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
+
     // Initialize Prometheus metrics
     metrics::init_metrics();
 
@@ -153,18 +372,25 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .expect("METRICS_PORT must be a valid port number");
 
     let grpc_addr = format!("0.0.0.0:{}", grpc_port).parse()?;
+
+    // Initialize config and scripts once at startup
+    let config = Arc::new(AppConfig::new());
+    let scripts = Arc::new(ScriptCache::new());
+
     let transactions = HibikiService {
         app_owner_wallet: Arc::new(get_app_owner_wallet()),
         fee_collector_wallet: Arc::new(get_fee_collector_wallet()),
+        config,
+        scripts,
     };
 
-    println!("gRPC Server listening on port {}...", grpc_port);
-    println!("Metrics server will listen on port {}...", metrics_port);
+    log::info!("gRPC Server listening on port {}...", grpc_port);
+    log::info!("Metrics server will listen on port {}...", metrics_port);
 
     // Start metrics server in background
     tokio::spawn(async move {
         if let Err(e) = metrics_server::start_metrics_server(metrics_port).await {
-            eprintln!("Metrics server error: {}", e);
+            log::error!("Metrics server error: {}", e);
         }
     });
 
