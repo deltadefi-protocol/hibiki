@@ -20,6 +20,8 @@ use whisky::data::{
     OutputReference, PlutusData, PlutusDataJson, PolicyId, ScriptHash, Tuple, VerificationKeyHash,
 };
 
+use crate::config::AppConfig;
+
 pub struct ScriptConfig {
     pub plutus_version: LanguageVersion,
     pub network_id: u8,
@@ -31,7 +33,7 @@ impl ScriptConfig {
     pub fn new() -> Self {
         Self {
             plutus_version: LanguageVersion::V3,
-            network_id: 0,
+            network_id: AppConfig::new().network_id.parse().unwrap(),
             stake_key_hash: None,
             is_stake_script_credential: false,
         }
