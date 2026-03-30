@@ -278,6 +278,7 @@ mod active_tests {
             Asset { unit: "378f9732c755ed6f4fc8d406f1461d0cca95d7d2e69416784684df39534e454b".to_string(), quantity: "47013750000".to_string() },
             Asset { unit: "82e46eb16633bf8bfa820c83ffeb63192c6e21757d2bf91290b2f41d494147".to_string(), quantity: "47013750000".to_string() },
             Asset { unit: "a2818ba06a88bb6c08d10f4f9b897c09768f28d274093628ad7086fc484f534b59".to_string(), quantity: "47013750000".to_string() },
+            Asset { unit: "0483b457673b527c1b6e8ca680a5f3a5676f27cdfea0c9bf285d09385553444358".to_string(), quantity: "47013750000".to_string() },
         ];
 
         // Build dex_order_book_utxo dynamically
@@ -319,6 +320,8 @@ mod active_tests {
             ("d2eaf64d54d94a87b00abd2f745c7181d909b37c9c97fd0287ad4b6236abb35e", "9308722500000"),
             // IAG - hash of 82e46eb16633bf8bfa820c83ffeb63192c6e21757d2bf91290b2f41d494147
             ("7e8f6cc9a5dbf788ea70234aac56977b0fc8a2fe3cbfe565e16dd63ba00ea54a", "9308722500000"),
+            // USDC - hash of 0483b457673b527c1b6e8ca680a5f3a5676f27cdfea0c9bf285d09385553444358
+            ("1719580f1a0548226ebff49f260871246ef54afae23ed5ca0dd90e98fbc64978", "9308722500000"),
         ];
 
         let mut account_balance_utxos = Vec::new();
@@ -359,6 +362,7 @@ mod active_tests {
                     Asset { unit: "3363b99384d6ee4c4b009068af396c8fdf92dafd111e58a857af04294e49474854".to_string(), quantity: "9261708750000".to_string() },
                     Asset { unit: "378f9732c755ed6f4fc8d406f1461d0cca95d7d2e69416784684df39534e454b".to_string(), quantity: "9261708750000".to_string() },
                     Asset { unit: "82e46eb16633bf8bfa820c83ffeb63192c6e21757d2bf91290b2f41d494147".to_string(), quantity: "9261708750000".to_string() },
+                    Asset { unit: "0483b457673b527c1b6e8ca680a5f3a5676f27cdfea0c9bf285d09385553444358".to_string(), quantity: "9261708750000".to_string() },
                 ],
             }),
         };
