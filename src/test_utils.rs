@@ -34,6 +34,10 @@ pub fn init_test_env() {
                 "a2818ba06a88bb6c08d10f4f9b897c09768f28d274093628ad7086fc484f534b59",
             );
             std::env::set_var(
+                "USDC_UNIT",
+                "0483b457673b527c1b6e8ca680a5f3a5676f27cdfea0c9bf285d09385553444358",
+            );
+            std::env::set_var(
                 "OWNER_VKEY",
                 "fa5136e9e9ecbc9071da73eeb6c9a4ff73cbf436105cf8380d1c525c",
             );
