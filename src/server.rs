@@ -1,6 +1,7 @@
 use dotenv::dotenv;
 use std::env;
 use std::sync::Arc;
+use tracing_subscriber::prelude::*;
 use whisky::{calculate_tx_hash, Wallet};
 
 use hibiki::{
@@ -54,6 +55,7 @@ impl Hibiki for HibikiService {
         let reply = match place_order::handler(request_result, &self.config, &self.scripts).await {
             Ok(value) => value,
             Err(e) => {
+                tracing::error!(error = %e, handler = "place_order", "Handler error");
                 return Err(Status::failed_precondition(e.to_string()));
             }
         };
@@ -77,6 +79,7 @@ impl Hibiki for HibikiService {
         {
             Ok(value) => value,
             Err(e) => {
+                tracing::error!(error = %e, handler = "process_order", "Handler error");
                 return Err(Status::failed_precondition(e.to_string()));
             }
         };
@@ -100,6 +103,7 @@ impl Hibiki for HibikiService {
         {
             Ok(value) => value,
             Err(e) => {
+                tracing::error!(error = %e, handler = "cancel_orders", "Handler error");
                 return Err(Status::failed_precondition(e.to_string()));
             }
         };
@@ -116,6 +120,7 @@ impl Hibiki for HibikiService {
         let reply = match modify_order::handler(request_result, &self.config, &self.scripts).await {
             Ok(value) => value,
             Err(e) => {
+                tracing::error!(error = %e, handler = "modify_order", "Handler error");
                 return Err(Status::failed_precondition(e.to_string()));
             }
         };
@@ -139,6 +144,7 @@ impl Hibiki for HibikiService {
         {
             Ok(value) => value,
             Err(e) => {
+                tracing::error!(error = %e, handler = "process_modify_order", "Handler error");
                 return Err(Status::failed_precondition(e.to_string()));
             }
         };
@@ -162,6 +168,7 @@ impl Hibiki for HibikiService {
         {
             Ok(value) => value,
             Err(e) => {
+                tracing::error!(error = %e, handler = "fill_order", "Handler error");
                 return Err(Status::failed_precondition(e.to_string()));
             }
         };
@@ -180,6 +187,7 @@ impl Hibiki for HibikiService {
             match internal_transfer::handler(request_result, &self.config, &self.scripts).await {
                 Ok(value) => value,
                 Err(e) => {
+                    tracing::error!(error = %e, handler = "internal_transfer", "Handler error");
                     return Err(Status::failed_precondition(e.to_string()));
                 }
             };
@@ -202,6 +210,7 @@ impl Hibiki for HibikiService {
         {
             Ok(value) => value,
             Err(e) => {
+                tracing::error!(error = %e, handler = "process_transfer", "Handler error");
                 return Err(Status::failed_precondition(e.to_string()));
             }
         };
@@ -227,6 +236,7 @@ impl Hibiki for HibikiService {
         {
             Ok(value) => value,
             Err(e) => {
+                tracing::error!(error = %e, handler = "same_account_transferal", "Handler error");
                 return Err(Status::failed_precondition(e.to_string()));
             }
         };
@@ -239,10 +249,7 @@ impl Hibiki for HibikiService {
         request: Request<services::CancelAllAccountOrdersRequest>,
     ) -> Result<Response<services::CancelAllAccountOrdersResponse>, Status> {
         let request_result = request.into_inner();
-        log::info!(
-            "Got a request - cancel_all_account_orders {:?}",
-            request_result
-        );
+        tracing::info!(handler = "cancel_all_account_orders", "Got a request");
 
         let reply = match cancel_all_account_orders::handler(
             request_result,
@@ -254,6 +261,7 @@ impl Hibiki for HibikiService {
         {
             Ok(value) => value,
             Err(e) => {
+                tracing::error!(error = %e, handler = "cancel_all_account_orders", "Handler error");
                 return Err(Status::failed_precondition(e.to_string()));
             }
         };
@@ -265,7 +273,7 @@ impl Hibiki for HibikiService {
         request: Request<services::BurnExpiredIntentsRequest>,
     ) -> Result<Response<services::BurnExpiredIntentsResponse>, Status> {
         let request_result = request.into_inner();
-        log::info!("Got a request - burn_expired_intents {:?}", request_result);
+        tracing::info!(handler = "burn_expired_intents", "Got a request");
 
         let reply = match burn_expired_intents::handler(
             request_result,
@@ -277,6 +285,7 @@ impl Hibiki for HibikiService {
         {
             Ok(value) => value,
             Err(e) => {
+                tracing::error!(error = %e, handler = "burn_expired_intents", "Handler error");
                 return Err(Status::failed_precondition(e.to_string()));
             }
         };
@@ -293,6 +302,7 @@ impl Hibiki for HibikiService {
         let reply = match serialize_transfer_intent_datum::handler(request_result, &self.scripts) {
             Ok(value) => value,
             Err(e) => {
+                tracing::error!(error = %e, handler = "serialize_transferal_intent_datum", "Handler error");
                 return Err(Status::failed_precondition(e.to_string()));
             }
         };
@@ -303,16 +313,15 @@ impl Hibiki for HibikiService {
         &self,
         request: Request<services::SignTransactionRequest>,
     ) -> Result<Response<services::SignTransactionResponse>, Status> {
-        let start = Instant::now();
         println!("Got a request - sign_transaction");
         let request_result = request.into_inner();
         let reply = match sign_transaction::handler(request_result, &self.app_owner_wallet) {
             Ok(value) => value,
             Err(e) => {
+                tracing::error!(error = %e, handler = "sign_transaction", "Handler error");
                 return Err(Status::failed_precondition(e.to_string()));
             }
         };
-        println!("Time taken for sign_transaction: {:?}", start.elapsed());
         Ok(Response::new(reply))
     }
 
@@ -329,6 +338,7 @@ impl Hibiki for HibikiService {
         ) {
             Ok(value) => value,
             Err(e) => {
+                tracing::error!(error = %e, handler = "sign_transaction_with_fee_collector", "Handler error");
                 return Err(Status::failed_precondition(e.to_string()));
             }
         };
@@ -348,6 +358,7 @@ impl Hibiki for HibikiService {
         let tx_hash = match calculate_tx_hash(&request_result.tx_hex) {
             Ok(value) => value,
             Err(e) => {
+                tracing::error!(error = %e, handler = "calculate_tx_hash", "Handler error");
                 return Err(Status::failed_precondition(e.to_string()));
             }
         };
@@ -359,8 +370,20 @@ impl Hibiki for HibikiService {
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     dotenv().ok();
 
-    // Initialize logger - default to info level, can be overridden with RUST_LOG env var
-    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
+    // Initialize tracing with JSON format for GCP Cloud Logging
+    let filter = tracing_subscriber::EnvFilter::try_from_default_env()
+        .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info"));
+
+    tracing_subscriber::registry()
+        .with(filter)
+        .with(
+            tracing_subscriber::fmt::layer()
+                .json()
+                .with_target(true)
+                .with_file(true)
+                .with_line_number(true),
+        )
+        .init();
 
     // Initialize Prometheus metrics
     metrics::init_metrics();
@@ -384,13 +407,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         scripts,
     };
 
-    log::info!("gRPC Server listening on port {}...", grpc_port);
-    log::info!("Metrics server will listen on port {}...", metrics_port);
+    tracing::info!(port = %grpc_port, "gRPC Server listening");
+    tracing::info!(port = %metrics_port, "Metrics server listening");
 
     // Start metrics server in background
     tokio::spawn(async move {
         if let Err(e) = metrics_server::start_metrics_server(metrics_port).await {
-            log::error!("Metrics server error: {}", e);
+            tracing::error!(error = %e, "Metrics server error");
         }
     });
 
