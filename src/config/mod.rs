@@ -1,5 +1,6 @@
 use std::env::var;
 
+pub mod constant;
 pub mod gcp_secret_manager;
 pub mod hydra;
 

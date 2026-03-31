@@ -1,6 +1,5 @@
 pub use hibiki_proto::services;
 pub mod config;
-pub mod constant;
 pub mod grpc_metrics_interceptor;
 pub mod handler;
 pub mod metrics;
@@ -10,3 +9,5 @@ pub mod utils;
 
 #[cfg(test)]
 pub mod test_utils;
+#[cfg(test)]
+pub mod test_fixtures;
