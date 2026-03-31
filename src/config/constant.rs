@@ -26,6 +26,12 @@ pub fn snek_unit() -> &'static str {
         .get_or_init(|| std::env::var("SNEK_UNIT").expect("SNEK_UNIT must be set in environment"))
 }
 
+static USDC_UNIT: OnceLock<String> = OnceLock::new();
+pub fn usdc_unit() -> &'static str {
+    USDC_UNIT
+        .get_or_init(|| std::env::var("USDC_UNIT").expect("USDC_UNIT must be set in environment"))
+}
+
 static HOSKY_UNIT: OnceLock<String> = OnceLock::new();
 pub fn hosky_unit() -> &'static str {
     HOSKY_UNIT
@@ -58,6 +64,7 @@ pub fn all_hydra_to_l1_token_map() -> &'static HashMap<String, String> {
             iag_unit(),
             snek_unit(),
             hosky_unit(),
+            usdc_unit(),
         ])
     })
 }
