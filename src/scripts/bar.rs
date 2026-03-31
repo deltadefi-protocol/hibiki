@@ -16,8 +16,7 @@ use whisky::{
 };
 
 use whisky::data::{
-    Address, AssetName, Bool, ByteArray, ByteString, Constr0, Constr1, Constr2, Constr3, Constr4,
-    Constr5, Constr6, Constr7, Constr8, Constr9, ConstrFields, Credential, Int, List, Map,
+    Address, AssetName, Bool, ByteString, Constr0, ConstrFields, Credential, Int, List, Map,
     OutputReference, PlutusData, PlutusDataJson, PolicyId, ScriptHash, Tuple, VerificationKeyHash,
 };
 
@@ -41,11 +40,74 @@ impl ScriptConfig {
     }
 }
 
+pub fn app_deposit_withdraw_withdrawal_blueprint(
+    params: &PolicyId,
+) -> WithdrawalBlueprint<PolicyId, ProcessAppDeposit> {
+    let script_config = ScriptConfig::new();
+    let mut blueprint =
+        WithdrawalBlueprint::new(script_config.plutus_version, script_config.network_id);
+    blueprint
+        .param_script(
+            get_blueprint().validators[1].compiled_code.as_str(),
+            &[&params.to_json_string()],
+            BuilderDataType::JSON,
+        )
+        .unwrap();
+    blueprint
+}
+
+pub fn app_deposit_publish_withdrawal_blueprint(
+    params: &PolicyId,
+) -> WithdrawalBlueprint<PolicyId, PlutusData> {
+    let script_config = ScriptConfig::new();
+    let mut blueprint =
+        WithdrawalBlueprint::new(script_config.plutus_version, script_config.network_id);
+    blueprint
+        .param_script(
+            get_blueprint().validators[2].compiled_code.as_str(),
+            &[&params.to_json_string()],
+            BuilderDataType::JSON,
+        )
+        .unwrap();
+    blueprint
+}
+
+pub fn app_deposit_request_mint_minting_blueprint(
+    params: &PolicyId,
+) -> MintingBlueprint<PolicyId, MintPolarity> {
+    let script_config = ScriptConfig::new();
+    let mut blueprint = MintingBlueprint::new(script_config.plutus_version);
+    blueprint
+        .param_script(
+            get_blueprint().validators[4].compiled_code.as_str(),
+            &[&params.to_json_string()],
+            BuilderDataType::JSON,
+        )
+        .unwrap();
+    blueprint
+}
+
+pub fn app_deposit_request_spend_spending_blueprint(
+    params: &PolicyId,
+) -> SpendingBlueprint<PolicyId, AppDepositRequestRedeemer, AppDepositRequestDatum> {
+    let script_config = ScriptConfig::new();
+    let mut blueprint =
+        SpendingBlueprint::new(script_config.plutus_version, script_config.network_id, None);
+    blueprint
+        .param_script(
+            get_blueprint().validators[6].compiled_code.as_str(),
+            &[&params.to_json_string()],
+            BuilderDataType::JSON,
+        )
+        .unwrap();
+    blueprint
+}
+
 pub fn oracle_nft_mint_minting_blueprint(
-    params: OutputReference,
+    params: &OutputReference,
 ) -> MintingBlueprint<OutputReference, MintPolarity> {
-    let app_config = ScriptConfig::new();
-    let mut blueprint = MintingBlueprint::new(app_config.plutus_version);
+    let script_config = ScriptConfig::new();
+    let mut blueprint = MintingBlueprint::new(script_config.plutus_version);
     blueprint
         .param_script(
             get_blueprint().validators[8].compiled_code.as_str(),
@@ -56,12 +118,168 @@ pub fn oracle_nft_mint_minting_blueprint(
     blueprint
 }
 
-pub fn dex_order_book_spend_spending_blueprint(
-    params: (PolicyId, PolicyId),
-) -> SpendingBlueprint<(PolicyId, PolicyId), DexOrderBookRedeemer, DexOrderBookDatum> {
-    let app_config = ScriptConfig::new();
+pub fn app_oracle_spend_spending_blueprint(
+) -> SpendingBlueprint<(), AppOracleRedeemer, AppOracleDatum> {
+    let script_config = ScriptConfig::new();
     let mut blueprint =
-        SpendingBlueprint::new(app_config.plutus_version, app_config.network_id, None);
+        SpendingBlueprint::new(script_config.plutus_version, script_config.network_id, None);
+    blueprint
+        .no_param_script(get_blueprint().validators[10].compiled_code.as_str())
+        .unwrap();
+    blueprint
+}
+
+pub fn app_vault_stake_rotation_withdraw_withdrawal_blueprint(
+    params: &PolicyId,
+) -> WithdrawalBlueprint<PolicyId, PlutusData> {
+    let script_config = ScriptConfig::new();
+    let mut blueprint =
+        WithdrawalBlueprint::new(script_config.plutus_version, script_config.network_id);
+    blueprint
+        .param_script(
+            get_blueprint().validators[12].compiled_code.as_str(),
+            &[&params.to_json_string()],
+            BuilderDataType::JSON,
+        )
+        .unwrap();
+    blueprint
+}
+
+pub fn app_vault_stake_rotation_publish_withdrawal_blueprint(
+    params: &PolicyId,
+) -> WithdrawalBlueprint<PolicyId, PlutusData> {
+    let script_config = ScriptConfig::new();
+    let mut blueprint =
+        WithdrawalBlueprint::new(script_config.plutus_version, script_config.network_id);
+    blueprint
+        .param_script(
+            get_blueprint().validators[13].compiled_code.as_str(),
+            &[&params.to_json_string()],
+            BuilderDataType::JSON,
+        )
+        .unwrap();
+    blueprint
+}
+
+pub fn app_withdrawal_withdraw_withdrawal_blueprint(
+    params: &PolicyId,
+) -> WithdrawalBlueprint<PolicyId, ProcessAppWithdrawalRedeemer> {
+    let script_config = ScriptConfig::new();
+    let mut blueprint =
+        WithdrawalBlueprint::new(script_config.plutus_version, script_config.network_id);
+    blueprint
+        .param_script(
+            get_blueprint().validators[15].compiled_code.as_str(),
+            &[&params.to_json_string()],
+            BuilderDataType::JSON,
+        )
+        .unwrap();
+    blueprint
+}
+
+pub fn app_withdrawal_publish_withdrawal_blueprint(
+    params: &PolicyId,
+) -> WithdrawalBlueprint<PolicyId, PlutusData> {
+    let script_config = ScriptConfig::new();
+    let mut blueprint =
+        WithdrawalBlueprint::new(script_config.plutus_version, script_config.network_id);
+    blueprint
+        .param_script(
+            get_blueprint().validators[16].compiled_code.as_str(),
+            &[&params.to_json_string()],
+            BuilderDataType::JSON,
+        )
+        .unwrap();
+    blueprint
+}
+
+pub fn app_vault_spend_spending_blueprint(
+    params: &PolicyId,
+) -> SpendingBlueprint<PolicyId, AppVaultRedeemer, PlutusData> {
+    let script_config = ScriptConfig::new();
+    let mut blueprint =
+        SpendingBlueprint::new(script_config.plutus_version, script_config.network_id, None);
+    blueprint
+        .param_script(
+            get_blueprint().validators[18].compiled_code.as_str(),
+            &[&params.to_json_string()],
+            BuilderDataType::JSON,
+        )
+        .unwrap();
+    blueprint
+}
+
+pub fn dex_account_balance_mint_minting_blueprint(
+    params: &PolicyId,
+) -> MintingBlueprint<PolicyId, MintPolarity> {
+    let script_config = ScriptConfig::new();
+    let mut blueprint = MintingBlueprint::new(script_config.plutus_version);
+    blueprint
+        .param_script(
+            get_blueprint().validators[20].compiled_code.as_str(),
+            &[&params.to_json_string()],
+            BuilderDataType::JSON,
+        )
+        .unwrap();
+    blueprint
+}
+
+pub fn dex_account_balance_spend_spending_blueprint(
+    params: (&PolicyId, &PolicyId),
+) -> SpendingBlueprint<(PolicyId, PolicyId), DexAccountBalanceRedeemer, DexAccountBalanceDatum> {
+    let script_config = ScriptConfig::new();
+    let mut blueprint =
+        SpendingBlueprint::new(script_config.plutus_version, script_config.network_id, None);
+    let param_strs: Vec<String> = vec![params.0.to_json_string(), params.1.to_json_string()];
+    let param_refs: Vec<&str> = param_strs.iter().map(|s| s.as_str()).collect();
+    blueprint
+        .param_script(
+            get_blueprint().validators[22].compiled_code.as_str(),
+            &param_refs,
+            BuilderDataType::JSON,
+        )
+        .unwrap();
+    blueprint
+}
+
+pub fn emergency_order_cancel_withdraw_withdrawal_blueprint(
+    params: &PolicyId,
+) -> WithdrawalBlueprint<PolicyId, EmergencyCancelRedeemer> {
+    let script_config = ScriptConfig::new();
+    let mut blueprint =
+        WithdrawalBlueprint::new(script_config.plutus_version, script_config.network_id);
+    blueprint
+        .param_script(
+            get_blueprint().validators[24].compiled_code.as_str(),
+            &[&params.to_json_string()],
+            BuilderDataType::JSON,
+        )
+        .unwrap();
+    blueprint
+}
+
+pub fn emergency_order_cancel_publish_withdrawal_blueprint(
+    params: &PolicyId,
+) -> WithdrawalBlueprint<PolicyId, PlutusData> {
+    let script_config = ScriptConfig::new();
+    let mut blueprint =
+        WithdrawalBlueprint::new(script_config.plutus_version, script_config.network_id);
+    blueprint
+        .param_script(
+            get_blueprint().validators[25].compiled_code.as_str(),
+            &[&params.to_json_string()],
+            BuilderDataType::JSON,
+        )
+        .unwrap();
+    blueprint
+}
+
+pub fn dex_order_book_spend_spending_blueprint(
+    params: (&PolicyId, &PolicyId),
+) -> SpendingBlueprint<(PolicyId, PolicyId), DexOrderBookRedeemer, DexOrderBookDatum> {
+    let script_config = ScriptConfig::new();
+    let mut blueprint =
+        SpendingBlueprint::new(script_config.plutus_version, script_config.network_id, None);
     let param_strs: Vec<String> = vec![params.0.to_json_string(), params.1.to_json_string()];
     let param_refs: Vec<&str> = param_strs.iter().map(|s| s.as_str()).collect();
     blueprint
@@ -74,12 +292,75 @@ pub fn dex_order_book_spend_spending_blueprint(
     blueprint
 }
 
+pub fn emergency_cancel_order_request_mint_minting_blueprint(
+    params: &PolicyId,
+) -> MintingBlueprint<PolicyId, MintPolarity> {
+    let script_config = ScriptConfig::new();
+    let mut blueprint = MintingBlueprint::new(script_config.plutus_version);
+    blueprint
+        .param_script(
+            get_blueprint().validators[29].compiled_code.as_str(),
+            &[&params.to_json_string()],
+            BuilderDataType::JSON,
+        )
+        .unwrap();
+    blueprint
+}
+
+pub fn emergency_cancel_order_request_spend_spending_blueprint(
+    params: &PolicyId,
+) -> SpendingBlueprint<PolicyId, EmergencyCancelRequestRedeemer, EmergencyCancelRequestDatum> {
+    let script_config = ScriptConfig::new();
+    let mut blueprint =
+        SpendingBlueprint::new(script_config.plutus_version, script_config.network_id, None);
+    blueprint
+        .param_script(
+            get_blueprint().validators[31].compiled_code.as_str(),
+            &[&params.to_json_string()],
+            BuilderDataType::JSON,
+        )
+        .unwrap();
+    blueprint
+}
+
+pub fn emergency_withdrawal_request_mint_minting_blueprint(
+    params: &PolicyId,
+) -> MintingBlueprint<PolicyId, MintPolarity> {
+    let script_config = ScriptConfig::new();
+    let mut blueprint = MintingBlueprint::new(script_config.plutus_version);
+    blueprint
+        .param_script(
+            get_blueprint().validators[33].compiled_code.as_str(),
+            &[&params.to_json_string()],
+            BuilderDataType::JSON,
+        )
+        .unwrap();
+    blueprint
+}
+
+pub fn emergency_withdrawal_request_spend_spending_blueprint(
+    params: &PolicyId,
+) -> SpendingBlueprint<PolicyId, EmergencyWithdrawalRequestRedeemer, EmergencyWithdrawalRequestDatum>
+{
+    let script_config = ScriptConfig::new();
+    let mut blueprint =
+        SpendingBlueprint::new(script_config.plutus_version, script_config.network_id, None);
+    blueprint
+        .param_script(
+            get_blueprint().validators[35].compiled_code.as_str(),
+            &[&params.to_json_string()],
+            BuilderDataType::JSON,
+        )
+        .unwrap();
+    blueprint
+}
+
 pub fn hydra_account_spend_spending_blueprint(
     params: &PolicyId,
 ) -> SpendingBlueprint<PolicyId, HydraAccountRedeemer, UserAccount> {
-    let app_config = ScriptConfig::new();
+    let script_config = ScriptConfig::new();
     let mut blueprint =
-        SpendingBlueprint::new(app_config.plutus_version, app_config.network_id, None);
+        SpendingBlueprint::new(script_config.plutus_version, script_config.network_id, None);
     blueprint
         .param_script(
             get_blueprint().validators[37].compiled_code.as_str(),
@@ -93,8 +374,9 @@ pub fn hydra_account_spend_spending_blueprint(
 pub fn hydra_account_withdraw_withdrawal_blueprint(
     params: &PolicyId,
 ) -> WithdrawalBlueprint<PolicyId, HydraAccountOperation> {
-    let app_config = ScriptConfig::new();
-    let mut blueprint = WithdrawalBlueprint::new(app_config.plutus_version, app_config.network_id);
+    let script_config = ScriptConfig::new();
+    let mut blueprint =
+        WithdrawalBlueprint::new(script_config.plutus_version, script_config.network_id);
     blueprint
         .param_script(
             get_blueprint().validators[38].compiled_code.as_str(),
@@ -108,9 +390,9 @@ pub fn hydra_account_withdraw_withdrawal_blueprint(
 pub fn hydra_order_book_spend_spending_blueprint(
     params: &PolicyId,
 ) -> SpendingBlueprint<PolicyId, PlutusData, Order> {
-    let app_config = ScriptConfig::new();
+    let script_config = ScriptConfig::new();
     let mut blueprint =
-        SpendingBlueprint::new(app_config.plutus_version, app_config.network_id, None);
+        SpendingBlueprint::new(script_config.plutus_version, script_config.network_id, None);
     blueprint
         .param_script(
             get_blueprint().validators[40].compiled_code.as_str(),
@@ -124,8 +406,9 @@ pub fn hydra_order_book_spend_spending_blueprint(
 pub fn hydra_order_book_withdraw_withdrawal_blueprint(
     params: &PolicyId,
 ) -> WithdrawalBlueprint<PolicyId, HydraOrderBookRedeemer> {
-    let app_config = ScriptConfig::new();
-    let mut blueprint = WithdrawalBlueprint::new(app_config.plutus_version, app_config.network_id);
+    let script_config = ScriptConfig::new();
+    let mut blueprint =
+        WithdrawalBlueprint::new(script_config.plutus_version, script_config.network_id);
     blueprint
         .param_script(
             get_blueprint().validators[41].compiled_code.as_str(),
@@ -139,8 +422,9 @@ pub fn hydra_order_book_withdraw_withdrawal_blueprint(
 pub fn hydra_order_book_publish_withdrawal_blueprint(
     params: &PolicyId,
 ) -> WithdrawalBlueprint<PolicyId, PlutusData> {
-    let app_config = ScriptConfig::new();
-    let mut blueprint = WithdrawalBlueprint::new(app_config.plutus_version, app_config.network_id);
+    let script_config = ScriptConfig::new();
+    let mut blueprint =
+        WithdrawalBlueprint::new(script_config.plutus_version, script_config.network_id);
     blueprint
         .param_script(
             get_blueprint().validators[42].compiled_code.as_str(),
@@ -154,8 +438,8 @@ pub fn hydra_order_book_publish_withdrawal_blueprint(
 pub fn hydra_tokens_mint_minting_blueprint(
     params: &PolicyId,
 ) -> MintingBlueprint<PolicyId, HydraTokensRedeemer> {
-    let app_config = ScriptConfig::new();
-    let mut blueprint = MintingBlueprint::new(app_config.plutus_version);
+    let script_config = ScriptConfig::new();
+    let mut blueprint = MintingBlueprint::new(script_config.plutus_version);
     blueprint
         .param_script(
             get_blueprint().validators[44].compiled_code.as_str(),
@@ -169,9 +453,9 @@ pub fn hydra_tokens_mint_minting_blueprint(
 pub fn hydra_user_intent_spend_spending_blueprint(
     params: &PolicyId,
 ) -> SpendingBlueprint<PolicyId, PlutusData, HydraUserIntentDatum> {
-    let app_config = ScriptConfig::new();
+    let script_config = ScriptConfig::new();
     let mut blueprint =
-        SpendingBlueprint::new(app_config.plutus_version, app_config.network_id, None);
+        SpendingBlueprint::new(script_config.plutus_version, script_config.network_id, None);
     blueprint
         .param_script(
             get_blueprint().validators[46].compiled_code.as_str(),
@@ -185,8 +469,8 @@ pub fn hydra_user_intent_spend_spending_blueprint(
 pub fn hydra_user_intent_mint_minting_blueprint(
     params: &PolicyId,
 ) -> MintingBlueprint<PolicyId, HydraUserIntentRedeemer> {
-    let app_config = ScriptConfig::new();
-    let mut blueprint = MintingBlueprint::new(app_config.plutus_version);
+    let script_config = ScriptConfig::new();
+    let mut blueprint = MintingBlueprint::new(script_config.plutus_version);
     blueprint
         .param_script(
             get_blueprint().validators[47].compiled_code.as_str(),
@@ -197,55 +481,50 @@ pub fn hydra_user_intent_mint_minting_blueprint(
     blueprint
 }
 
-#[derive(Debug, Clone, ImplConstr)]
-pub struct ProcessAppDeposit(pub Constr0<Box<List<MPFProof>>>);
-
-#[derive(Debug, Clone, ConstrEnum)]
-pub enum MPFProof {
-    MPFInsert(MPFInsert),
-    MPFUpdate(MPFUpdate),
-    MPFDelete(MPFDelete),
+pub fn always_succeed_mint_minting_blueprint(
+    params: (&HydraAccountIntent, &HydraOrderBookIntent),
+) -> MintingBlueprint<(HydraAccountIntent, HydraOrderBookIntent), PlutusData> {
+    let script_config = ScriptConfig::new();
+    let mut blueprint = MintingBlueprint::new(script_config.plutus_version);
+    let param_strs: Vec<String> = vec![params.0.to_json_string(), params.1.to_json_string()];
+    let param_refs: Vec<&str> = param_strs.iter().map(|s| s.as_str()).collect();
+    blueprint
+        .param_script(
+            get_blueprint().validators[49].compiled_code.as_str(),
+            &param_refs,
+            BuilderDataType::JSON,
+        )
+        .unwrap();
+    blueprint
 }
 
 #[derive(Debug, Clone, ImplConstr)]
-pub struct MPFInsert(pub Constr0<Box<List<ProofStep>>>);
+pub struct ProcessAppDeposit(pub Constr0<MPFProof>);
+
+#[derive(Debug, Clone, ConstrEnum)]
+pub enum MPFProof {
+    MPFInsert(Proof),
+    MPFUpdate(Box<(ByteString, ByteString, Proof)>),
+    MPFDelete(Proof),
+}
 
 pub type Proof = List<ProofStep>;
 
 #[derive(Debug, Clone, ConstrEnum)]
 pub enum ProofStep {
-    Branch(Branch),
-    Fork(Fork),
-    Leaf(Leaf),
+    Branch(Box<(Int, ByteString)>),
+    Fork(Box<(Int, Neighbor)>),
+    Leaf(Box<(Int, ByteString, ByteString)>),
 }
 
 #[derive(Clone, Debug, ImplConstr)]
-pub struct Branch(pub Constr0<Box<(Int, ByteArray)>>);
-
-#[derive(Clone, Debug, ImplConstr)]
-pub struct Fork(pub Constr1<Box<(Int, Neighbor)>>);
-
-#[derive(Clone, Debug, ImplConstr)]
-pub struct Neighbor(pub Constr0<Box<(Int, ByteArray, ByteArray)>>);
-
-#[derive(Clone, Debug, ImplConstr)]
-pub struct Leaf(pub Constr2<Box<(Int, ByteArray, ByteArray)>>);
-
-#[derive(Clone, Debug, ImplConstr)]
-pub struct MPFUpdate(pub Constr1<Box<(ByteArray, ByteArray, Proof)>>);
-
-#[derive(Debug, Clone, ImplConstr)]
-pub struct MPFDelete(pub Constr2<Box<List<ProofStep>>>);
+pub struct Neighbor(pub Constr0<Box<(Int, ByteString, ByteString)>>);
 
 #[derive(Debug, Clone, ConstrEnum)]
 pub enum MintPolarity {
     RMint,
     RBurn,
 }
-
-pub type RMint = Constr0<()>;
-
-pub type RBurn = Constr1<()>;
 
 #[derive(Debug, Clone, ConstrEnum)]
 pub enum AppDepositRequestRedeemer {
@@ -254,57 +533,31 @@ pub enum AppDepositRequestRedeemer {
     AppDepositRequestSpamPreventionWithdraw,
 }
 
-pub type AppDepositRequestTransferAccountBalance = Constr0<()>;
-
-pub type AppDepositRequestEmergencyWithdrawal = Constr1<()>;
-
-pub type AppDepositRequestSpamPreventionWithdraw = Constr2<()>;
-
 #[derive(Clone, Debug, ImplConstr)]
 pub struct AppDepositRequestDatum(pub Constr0<Box<(UserAccount, MValue)>>);
 
 #[derive(Debug, Clone, ConstrEnum)]
 pub enum UserAccount {
-    UserTradeAccount(UserTradeAccount),
-    UserFundingAccount(UserFundingAccount),
-    UserMobileAccount(UserMobileAccount),
+    UserTradeAccount(Box<(Account, ScriptHash)>),
+    UserFundingAccount(Box<(Account, ScriptHash)>),
+    UserMobileAccount(Box<(Account, ScriptHash)>),
 }
 
 #[derive(Clone, Debug, ImplConstr)]
-pub struct UserTradeAccount(pub Constr0<Box<(Account, ScriptHash)>>);
-
-#[derive(Clone, Debug, ImplConstr)]
-pub struct Account(pub Constr0<Box<(ByteArray, Credential, Credential)>>);
-
-#[derive(Clone, Debug, ImplConstr)]
-pub struct UserFundingAccount(pub Constr1<Box<(Account, ScriptHash)>>);
-
-#[derive(Clone, Debug, ImplConstr)]
-pub struct UserMobileAccount(pub Constr2<Box<(Account, ScriptHash)>>);
+pub struct Account(pub Constr0<Box<(ByteString, Credential, Credential)>>);
 
 pub type MValue = Map<PolicyId, Map<AssetName, Int>>;
 
 #[derive(Debug, Clone, ConstrEnum)]
 pub enum AppOracleRedeemer {
-    DexRotateKey(DexRotateKey),
+    DexRotateKey(Box<(ByteString, ByteString)>),
     StopDex,
-    RotateHydraInfo(RotateHydraInfo),
-    RotateCommunityStopKeys(RotateCommunityStopKeys),
+    RotateHydraInfo(HydraInfo),
+    MigrateApp,
 }
 
 #[derive(Clone, Debug, ImplConstr)]
-pub struct DexRotateKey(pub Constr0<Box<(ByteArray, ByteArray)>>);
-
-pub type StopDex = Constr1<()>;
-
-#[derive(Clone, Debug, ImplConstr)]
-pub struct RotateHydraInfo(pub Constr2<Box<HydraInfo>>);
-
-#[derive(Clone, Debug, ImplConstr)]
-pub struct HydraInfo(pub Constr0<Box<(ScriptHash, List<VerificationKeyHash>)>>);
-
-#[derive(Clone, Debug, ImplConstr)]
-pub struct RotateCommunityStopKeys(pub Constr3<Box<List<VerificationKeyHash>>>);
+pub struct HydraInfo(pub Constr0<List<VerificationKeyHash>>);
 
 #[derive(Clone, Debug, ImplConstr)]
 pub struct AppOracleDatum(
@@ -316,7 +569,7 @@ pub struct AppOracleDatum(
                 List<VerificationKeyHash>,
                 PolicyId,
                 Address,
-                Address,
+                ScriptHash,
                 PolicyId,
                 Address,
                 PolicyId,
@@ -335,18 +588,21 @@ pub struct AppOracleDatum(
 );
 
 #[derive(Clone, Debug, ImplConstr)]
-pub struct WithdrawalScriptHashes(pub Constr0<Box<(ScriptHash, ScriptHash, ScriptHash)>>);
+pub struct WithdrawalScriptHashes(
+    pub Constr0<Box<(ScriptHash, ScriptHash, ScriptHash, ScriptHash)>>,
+);
 
 #[derive(Debug, Clone, ConstrEnum)]
 pub enum ProcessAppWithdrawalRedeemer {
-    ProcessAppWithdrawal(ProcessAppWithdrawal),
+    ProcessAppWithdrawal(Box<(UserAccount, MValue, MPFProof)>),
     CommunityStop,
 }
 
-#[derive(Clone, Debug, ImplConstr)]
-pub struct ProcessAppWithdrawal(pub Constr0<Box<(UserAccount, MValue, MPFProof)>>);
-
-pub type CommunityStop = Constr1<()>;
+#[derive(Debug, Clone, ConstrEnum)]
+pub enum AppVaultRedeemer {
+    AppVaultWithdraw,
+    AppVaultStakeKeyRotation,
+}
 
 #[derive(Debug, Clone, ConstrEnum)]
 pub enum DexAccountBalanceRedeemer {
@@ -362,28 +618,8 @@ pub enum DexAccountBalanceRedeemer {
     DABRemoveRegistry,
 }
 
-pub type AppDeposit = Constr0<()>;
-
-pub type AppWithdrawal = Constr1<()>;
-
-pub type DABHydraIncrementalDecommit = Constr2<()>;
-
-pub type DABHydraCommit = Constr3<()>;
-
-pub type HydraWithdrawal = Constr4<()>;
-
-pub type HydraCancelWithdrawal = Constr5<()>;
-
-pub type DABSplitMerkleTree = Constr6<()>;
-
-pub type DABCombineMerkleTree = Constr7<()>;
-
-pub type DABSpamPreventionWithdraw = Constr8<()>;
-
-pub type DABRemoveRegistry = Constr9<()>;
-
 #[derive(Clone, Debug, ImplConstr)]
-pub struct DexAccountBalanceDatum(pub Constr0<Box<ByteArray>>);
+pub struct DexAccountBalanceDatum(pub Constr0<ByteString>);
 
 #[derive(Clone, Debug, ImplConstr)]
 pub struct EmergencyCancelRedeemer(pub Constr0<Box<(UserAccount, MerklizedOrderDatum, MPFProof)>>);
@@ -392,7 +628,27 @@ pub struct EmergencyCancelRedeemer(pub Constr0<Box<(UserAccount, MerklizedOrderD
 pub struct MerklizedOrderDatum(pub Constr0<Box<(Order, MValue)>>);
 
 #[derive(Clone, Debug, ImplConstr)]
-pub struct Order(pub Constr0<Box<(ByteArray, Tuple, Tuple, Bool, Int, Int, Int, UserAccount)>>);
+pub struct Order(
+    pub  Constr0<
+        Box<(
+            ByteString,
+            Tuple<(ByteString, ByteString)>,
+            Tuple<(ByteString, ByteString)>,
+            Bool,
+            Int,
+            Int,
+            Int,
+            UserAccount,
+            OrderType,
+        )>,
+    >,
+);
+
+#[derive(Debug, Clone, ConstrEnum)]
+pub enum OrderType {
+    LimitOrder,
+    MarketOrder,
+}
 
 #[derive(Debug, Clone, ConstrEnum)]
 pub enum DexOrderBookRedeemer {
@@ -403,16 +659,6 @@ pub enum DexOrderBookRedeemer {
     DexOrderBookEmergencyCancelOrder,
 }
 
-pub type DexOrderBookSplitMerkleTree = Constr0<()>;
-
-pub type DexOrderBookCombineMerkleTree = Constr1<()>;
-
-pub type DexOrderBookHydraCommit = Constr2<()>;
-
-pub type DexOrderBookSpamPreventionWithdraw = Constr3<()>;
-
-pub type DexOrderBookEmergencyCancelOrder = Constr4<()>;
-
 #[derive(Clone, Debug, ImplConstr)]
 pub struct DexOrderBookDatum(
     pub  Constr0<
@@ -420,7 +666,7 @@ pub struct DexOrderBookDatum(
             VerificationKeyHash,
             VerificationKeyHash,
             UserAccount,
-            ByteArray,
+            ByteString,
             PolicyId,
             Address,
             PolicyId,
@@ -440,14 +686,8 @@ pub enum EmergencyCancelRequestRedeemer {
     EmergencyRequestExpiredCancel,
 }
 
-pub type EmergencyRequestProcessCancel = Constr0<()>;
-
-pub type EmergencyRequestSpamPreventionCancel = Constr1<()>;
-
-pub type EmergencyRequestExpiredCancel = Constr2<()>;
-
 #[derive(Clone, Debug, ImplConstr)]
-pub struct EmergencyCancelRequestDatum(pub Constr0<Box<(UserAccount, ByteArray, Int)>>);
+pub struct EmergencyCancelRequestDatum(pub Constr0<Box<(UserAccount, ByteString, Int)>>);
 
 #[derive(Debug, Clone, ConstrEnum)]
 pub enum EmergencyWithdrawalRequestRedeemer {
@@ -456,111 +696,52 @@ pub enum EmergencyWithdrawalRequestRedeemer {
     EmergencyRequestExpiredWithdraw,
 }
 
-pub type EmergencyRequestProcessEmergencyAction = Constr0<()>;
-
-pub type EmergencyRequestSpamPreventionWithdraw = Constr1<()>;
-
-pub type EmergencyRequestExpiredWithdraw = Constr2<()>;
-
 #[derive(Clone, Debug, ImplConstr)]
 pub struct EmergencyWithdrawalRequestDatum(pub Constr0<Box<(UserAccount, MValue, Int)>>);
 
 #[derive(Debug, Clone, ConstrEnum)]
-pub enum HydraAccountRedeemer {
-    HydraAccountTrade(HydraAccountTrade),
+pub enum HydraAccountRedeemer<T: PlutusDataJson = PlutusData> {
+    HydraAccountTrade(T),
     HydraAccountOperate,
     HydraAccountSpamPreventionWithdraw,
 }
 
-#[derive(Clone, Debug, ImplConstr)]
-pub struct HydraAccountTrade(pub Constr0<Box<PlutusData>>);
-
-pub type HydraAccountOperate = Constr1<()>;
-
-pub type HydraAccountSpamPreventionWithdraw = Constr2<()>;
-
 #[derive(Debug, Clone, ConstrEnum)]
 pub enum HydraAccountOperation {
-    ProcessWithdrawal(ProcessWithdrawal),
-    ProcessCancelWithdrawal(ProcessCancelWithdrawal),
-    ProcessSameAccountTransferal(ProcessSameAccountTransferal),
+    ProcessWithdrawal(MPFProof),
+    ProcessCancelWithdrawal(MPFProof),
+    ProcessSameAccountTransferal(UserAccount),
     ProcessTransferal,
-    ProcessCombineUtxosAtClose(ProcessCombineUtxosAtClose),
-    ProcessSplitUtxosAtOpen(ProcessSplitUtxosAtOpen),
+    ProcessCombineUtxosAtClose(TreeOrProofsWithTokenMap),
+    ProcessSplitUtxosAtOpen(TreeOrProofsWithTokenMap),
 }
-
-#[derive(Debug, Clone, ImplConstr)]
-pub struct ProcessWithdrawal(pub Constr0<Box<List<MPFProof>>>);
-
-#[derive(Debug, Clone, ImplConstr)]
-pub struct ProcessCancelWithdrawal(pub Constr1<Box<List<MPFProof>>>);
-
-#[derive(Debug, Clone, ImplConstr)]
-pub struct ProcessSameAccountTransferal(pub Constr2<Box<List<UserAccount>>>);
-
-pub type ProcessTransferal = Constr3<()>;
-
-#[derive(Debug, Clone, ImplConstr)]
-pub struct ProcessCombineUtxosAtClose(pub Constr4<Box<List<TreeOrProofsWithTokenMap>>>);
 
 #[derive(Clone, Debug, ImplConstr)]
 pub struct TreeOrProofsWithTokenMap(pub Constr0<Box<(TreeOrProofs, TokenMap)>>);
 
 #[derive(Debug, Clone, ConstrEnum)]
 pub enum TreeOrProofs {
-    FullTree(FullTree),
-    Proofs(Proofs),
+    FullTree(Tree),
+    Proofs(List<MPFProof>),
 }
-
-#[derive(Debug, Clone, ImplConstr)]
-pub struct FullTree(pub Constr0<Box<List<Tree>>>);
 
 #[derive(Debug, Clone, ConstrEnum)]
 pub enum Tree {
-    TreeBranch(TreeBranch),
-    TreeLeaf(TreeLeaf),
+    TreeBranch(Box<(ByteString, List<Tree>)>),
+    TreeLeaf(Box<(ByteString, ByteString, ByteString)>),
 }
-
-#[derive(Clone, Debug, ImplConstr)]
-pub struct TreeBranch(pub Constr0<Box<(ByteArray, PlutusData)>>);
-
-#[derive(Clone, Debug, ImplConstr)]
-pub struct TreeLeaf(pub Constr1<Box<(ByteArray, ByteArray, ByteArray)>>);
-
-#[derive(Debug, Clone, ImplConstr)]
-pub struct Proofs(pub Constr1<Box<List<MPFProof>>>);
 
 pub type TokenMap = Map<ByteString, Tuple>;
 
-#[derive(Debug, Clone, ImplConstr)]
-pub struct ProcessSplitUtxosAtOpen(pub Constr5<Box<List<TreeOrProofsWithTokenMap>>>);
-
 #[derive(Debug, Clone, ConstrEnum)]
 pub enum HydraOrderBookRedeemer {
-    PlaceOrder(PlaceOrder),
+    PlaceOrder(UserAccount),
     CancelOrder,
-    FillOrder(FillOrder),
-    ModifyOrder(ModifyOrder),
-    CombineOrderMerkle(CombineOrderMerkle),
-    SplitOrderMerkle(SplitOrderMerkle),
+    FillOrder(ByteString),
+    ModifyOrder(UserAccount),
+    CombineOrderMerkle(TreeOrProofsWithTokenMap),
+    SplitOrderMerkle(TreeOrProofsWithTokenMap),
 }
-
-#[derive(Debug, Clone, ImplConstr)]
-pub struct PlaceOrder(pub Constr0<Box<List<UserAccount>>>);
-
-pub type CancelOrder = Constr1<()>;
-
-#[derive(Clone, Debug, ImplConstr)]
-pub struct FillOrder(pub Constr2<Box<ByteArray>>);
-
-#[derive(Debug, Clone, ImplConstr)]
-pub struct ModifyOrder(pub Constr3<Box<List<UserAccount>>>);
-
-#[derive(Debug, Clone, ImplConstr)]
-pub struct CombineOrderMerkle(pub Constr4<Box<List<TreeOrProofsWithTokenMap>>>);
-
-#[derive(Debug, Clone, ImplConstr)]
-pub struct SplitOrderMerkle(pub Constr5<Box<List<TreeOrProofsWithTokenMap>>>);
 
 #[derive(Debug, Clone, ConstrEnum)]
 pub enum HydraTokensRedeemer {
@@ -572,57 +753,28 @@ pub enum HydraTokensRedeemer {
     BurnAtCombineOrderBook,
 }
 
-pub type MintAtHydraOpen = Constr0<()>;
-
-pub type BurnAtHydraClose = Constr1<()>;
-
-pub type MintAtCancelWithdrawal = Constr2<()>;
-
-pub type BurnAtWithdrawal = Constr3<()>;
-
-pub type MintAtInitOrderBook = Constr4<()>;
-
-pub type BurnAtCombineOrderBook = Constr5<()>;
-
 #[derive(Debug, Clone, ConstrEnum)]
-pub enum HydraUserIntentDatum {
-    TradeIntent(TradeIntent),
-    MasterIntent(MasterIntent),
+pub enum HydraUserIntentDatum<T: PlutusDataJson = PlutusData> {
+    TradeIntent(Box<(UserAccount, T)>),
+    MasterIntent(Box<(UserAccount, T)>),
 }
 
-#[derive(Clone, Debug, ImplConstr)]
-pub struct TradeIntent(pub Constr0<Box<(UserAccount, PlutusData)>>);
-
-#[derive(Clone, Debug, ImplConstr)]
-pub struct MasterIntent(pub Constr1<Box<(UserTradeAccount, TransferIntent)>>);
-
 #[derive(Debug, Clone, ConstrEnum)]
-pub enum HydraUserIntentRedeemer {
-    MintTradeIntent(MintTradeIntent),
-    MintMasterIntent(MintMasterIntent),
+pub enum HydraUserIntentRedeemer<T: PlutusDataJson = PlutusData> {
+    MintTradeIntent(Box<(UserAccount, T)>),
+    MintMasterIntent(Box<(UserAccount, T)>),
     BurnIntent,
 }
 
-#[derive(Clone, Debug, ImplConstr)]
-pub struct MintTradeIntent(pub Constr0<Box<(UserAccount, PlutusData)>>);
-
-#[derive(Clone, Debug, ImplConstr)]
-pub struct MintMasterIntent(pub Constr1<Box<(UserTradeAccount, TransferIntent)>>);
-
-pub type BurnIntent = Constr2<()>;
-
 #[derive(Debug, Clone, ConstrEnum)]
 pub enum HydraAccountIntent {
-    WithdrawalIntent(WithdrawalIntent),
-    CancelWithdrawalIntent(CancelWithdrawalIntent),
-    TransferIntent(TransferIntent),
+    WithdrawalIntent(Box<(MValue, MValue)>),
+    CancelWithdrawalIntent(MValue),
+    TransferIntent(Box<(UserAccount, MValue)>),
 }
 
-#[derive(Clone, Debug, ImplConstr)]
-pub struct WithdrawalIntent(pub Constr0<MValue>);
-
-#[derive(Clone, Debug, ImplConstr)]
-pub struct CancelWithdrawalIntent(pub Constr1<MValue>);
-
-#[derive(Clone, Debug, ImplConstr)]
-pub struct TransferIntent(pub Constr2<Box<(UserTradeAccount, MValue)>>);
+#[derive(Debug, Clone, ConstrEnum)]
+pub enum HydraOrderBookIntent {
+    PlaceOrderIntent(Box<(Order, MValue)>),
+    ModifyOrderIntent(Box<(Order, MValue)>),
+}
