@@ -16,7 +16,7 @@ dotenv = "0.15.0"
 async-trait = "0.1.79"
 whisky = "1.0.23"
 # whisky = { path = "../../../sidan/whisky/packages/whisky" }
-hibiki-proto = { git = "https://github.com/deltadefi-protocol/deltadefi-schema.git", tag = "v1.4.23-burn-expired-intents-1", dir = "proto/hibiki" }
+hibiki-proto = { git = "https://github.com/deltadefi-protocol/deltadefi-schema.git", tag = "v1.4.31-hibiki", dir = "proto/hibiki" }
 # hibiki-proto = { path = "../deltadefi-schema/proto/hibiki"}
 reqwest = { version = "0.11.22", features = ["json", "blocking"] }
 serde = { version = "1.0.219", features = ["derive"] }
@@ -34,6 +34,8 @@ blake2 = "0.10"
 hex = "0.4"
 log = "0.4"
 env_logger = "0.11"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["json", "env-filter"] }
 
 [build-dependencies]
 tonic-build = "0.10"
