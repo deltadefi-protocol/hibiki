@@ -189,7 +189,7 @@ pub async fn handler(
         receiver_account_utxo_tx_index_unit_map: to_unit_tx_index_map.to_proto(),
     })
 
-    // todo: remove this cm .
+    // todo: remove this cm
 }
 
 #[cfg(test)]
