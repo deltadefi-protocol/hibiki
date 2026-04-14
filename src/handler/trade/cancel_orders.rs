@@ -42,7 +42,7 @@ pub async fn handler(
     let updated_balance_l1 = from_proto_amount(&new_balance_l1);
     let mut unit_tx_index_map = TxIndexAssetsMap::new(updated_balance_l1.len());
 
-    let mut tx_builder = get_hydra_tx_builder();
+    let mut tx_builder = get_hydra_tx_builder(true);
     let hydra_account_spend = &scripts.hydra_account_spend;
     let hydra_order_book_spend = &scripts.hydra_order_book_spend;
     let hydra_order_book_withdrawal = &scripts.hydra_order_book_withdrawal;

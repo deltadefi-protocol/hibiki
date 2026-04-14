@@ -31,7 +31,7 @@ pub async fn handler(
 
     let mut account_tx_index_map = AccountTxIndexAssetsMap::new();
 
-    let mut tx_builder = get_hydra_tx_builder();
+    let mut tx_builder = get_hydra_tx_builder(true);
     let hydra_account_spend = &scripts.hydra_account_spend;
     let hydra_order_book_spend = &scripts.hydra_order_book_spend;
     let hydra_order_book_withdrawal = &scripts.hydra_order_book_withdrawal;

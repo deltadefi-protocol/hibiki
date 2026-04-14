@@ -16,12 +16,16 @@ pub fn get_script_ref_hex(cbor: &str) -> Result<String, WError> {
     Ok(hex::encode(script_ref.to_unwrapped_bytes()))
 }
 
-pub fn get_hydra_tx_builder() -> TxBuilder {
+pub fn get_hydra_tx_builder(eval: bool) -> TxBuilder {
     let mut serializer = WhiskyCSL::new(Some(get_hydra_pp())).unwrap();
     serializer.tx_evaluation_multiplier_percentage = 150;
     let tx_builder = TxBuilder::new(TxBuilderParam {
         serializer: Box::new(serializer),
-        evaluator: Some(Box::new(OfflineTxEvaluator::new())),
+        evaluator: if eval {
+            None
+        } else {
+            Some(Box::new(OfflineTxEvaluator::new()))
+        },
         fetcher: None,
         submitter: None,
         params: Some(get_hydra_pp()),

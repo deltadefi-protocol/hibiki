@@ -46,7 +46,7 @@ pub async fn handler(
     let mut unit_tx_index_map = TxIndexAssetsMap::new(updated_balance_l1.len());
 
     // Build script reference UTxOs using cached script info
-    let mut tx_builder = get_hydra_tx_builder();
+    let mut tx_builder = get_hydra_tx_builder(true);
 
     // Reference oracle UTxO
     tx_builder
@@ -190,14 +190,46 @@ mod tests {
 
         // (tx_hash, output_index, quantity)
         let balance_utxo_data = vec![
-            ("eb22bac72f0c70b20a3f5f4ba958c46f7af00c1a886b94e73cae8d62193bb979", 2u32, "1321"),
-            ("4e9644edf42b5c57e15ad1e4fb8e0e7b834223b648d6cc267c2953e680c1f24b", 4, "1745"),
-            ("5fe49cf6ebccb104c4072bc83bcfcc4ef53a389bb99285eb1ac242d76039570b", 4, "1211"),
-            ("45a7cae12dfc8c5c183d882de265adab5f47436c89b952e9a407fb7a9a81dae8", 4, "1235"),
-            ("c08f45e13eebdb9657612066c69181ee41975b9f9ed4a39b3cb00274f13d6e43", 4, "1024"),
-            ("b1489b2877a4305c91deb3bf56ea871db390571622cbf87199cc36f4bef4b786", 4, "1606"),
-            ("e4341bf07f63dbe21e236655926063e1074da3987a986ac249f27ccee50e1875", 4, "683"),
-            ("abbc606ff1d23538b5740883ea415340ce4fc4ab37fbca9593dafbea26c889d8", 4, "1838"),
+            (
+                "eb22bac72f0c70b20a3f5f4ba958c46f7af00c1a886b94e73cae8d62193bb979",
+                2u32,
+                "1321",
+            ),
+            (
+                "4e9644edf42b5c57e15ad1e4fb8e0e7b834223b648d6cc267c2953e680c1f24b",
+                4,
+                "1745",
+            ),
+            (
+                "5fe49cf6ebccb104c4072bc83bcfcc4ef53a389bb99285eb1ac242d76039570b",
+                4,
+                "1211",
+            ),
+            (
+                "45a7cae12dfc8c5c183d882de265adab5f47436c89b952e9a407fb7a9a81dae8",
+                4,
+                "1235",
+            ),
+            (
+                "c08f45e13eebdb9657612066c69181ee41975b9f9ed4a39b3cb00274f13d6e43",
+                4,
+                "1024",
+            ),
+            (
+                "b1489b2877a4305c91deb3bf56ea871db390571622cbf87199cc36f4bef4b786",
+                4,
+                "1606",
+            ),
+            (
+                "e4341bf07f63dbe21e236655926063e1074da3987a986ac249f27ccee50e1875",
+                4,
+                "683",
+            ),
+            (
+                "abbc606ff1d23538b5740883ea415340ce4fc4ab37fbca9593dafbea26c889d8",
+                4,
+                "1838",
+            ),
         ];
 
         let mut account_balance_utxos = Vec::new();

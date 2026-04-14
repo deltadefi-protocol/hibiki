@@ -50,7 +50,7 @@ pub async fn handler(
     let ref_input = from_proto_utxo(dex_order_book_utxo.as_ref().unwrap());
     let user_account = UserAccount::from_proto_trade_account(&account, account_ops_script_hash);
 
-    let mut tx_builder = get_hydra_tx_builder();
+    let mut tx_builder = get_hydra_tx_builder(true);
     let user_intent_mint = &scripts.user_intent_mint;
     let user_intent_spend = &scripts.user_intent_spend;
 
