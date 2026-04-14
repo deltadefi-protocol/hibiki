@@ -69,7 +69,7 @@ pub async fn handler(
     let balance_spend_ref_utxo = account_balance_spend.ref_utxo(&collateral)?;
     let balance_withdrawal_ref_utxo = internal_transfer_withdraw.ref_utxo(&collateral)?;
 
-    let mut tx_builder = get_hydra_tx_builder();
+    let mut tx_builder = get_hydra_tx_builder(true);
     tx_builder
         // reference oracle utxo
         .read_only_tx_in_reference(&ref_input.input.tx_hash, ref_input.input.output_index, None)

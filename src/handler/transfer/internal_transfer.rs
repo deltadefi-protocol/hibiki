@@ -27,7 +27,7 @@ pub async fn handler(
     let ref_input = from_proto_utxo(request.dex_order_book_utxo.as_ref().unwrap());
     let account = request.account.unwrap();
 
-    let mut tx_builder = get_hydra_tx_builder();
+    let mut tx_builder = get_hydra_tx_builder(true);
     let user_intent_mint = &scripts.user_intent_mint;
     let user_intent_spend = &scripts.user_intent_spend;
 
@@ -86,7 +86,10 @@ pub async fn handler(
         .input_for_evaluation(&collateral)
         .change_address(&request.address);
 
-    log::debug!("[INTERNAL_TRANSFER] tx_builder.mint_item: {:?}", tx_builder.mint_item);
+    log::debug!(
+        "[INTERNAL_TRANSFER] tx_builder.mint_item: {:?}",
+        tx_builder.mint_item
+    );
 
     tx_builder.complete(None).await?;
 

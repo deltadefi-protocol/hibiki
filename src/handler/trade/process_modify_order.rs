@@ -54,7 +54,7 @@ pub async fn handler(
         from_proto_balance_utxos(account_balance_utxos.as_ref().unwrap());
     let mut unit_tx_index_map = TxIndexAssetsMap::new(updated_balance_l1.len());
 
-    let mut tx_builder = get_hydra_tx_builder();
+    let mut tx_builder = get_hydra_tx_builder(true);
     let user_intent_mint = &scripts.user_intent_mint;
     let user_intent_spend = &scripts.user_intent_spend;
     let hydra_account_spend = &scripts.hydra_account_spend;

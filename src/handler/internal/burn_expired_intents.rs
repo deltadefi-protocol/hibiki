@@ -2,7 +2,7 @@ use hibiki_proto::services::{BurnExpiredIntentsRequest, BurnExpiredIntentsRespon
 use whisky::{
     calculate_tx_hash,
     data::{ByteString, PlutusData},
-    WError, Wallet,
+    Budget, WError, Wallet,
 };
 
 use crate::{
@@ -33,7 +33,7 @@ pub async fn handler(
         return Err(WError::new("handler", "No intent UTXOs provided"));
     }
 
-    let mut tx_builder = get_hydra_tx_builder();
+    let mut tx_builder = get_hydra_tx_builder(true);
     let user_intent_spend = &scripts.user_intent_spend;
     let user_intent_mint = &scripts.user_intent_mint;
 
@@ -59,7 +59,12 @@ pub async fn handler(
                 &intent_utxo.output.address,
             )
             .tx_in_inline_datum_present()
-            .tx_in_redeemer_value(&user_intent_spend.redeemer(ByteString::new(""), None))
+            .tx_in_redeemer_value(&user_intent_spend.redeemer(ByteString::new(""), {
+                Some(Budget {
+                    mem: 7000000,
+                    steps: 3000000000,
+                })
+            }))
             .spending_tx_in_reference(
                 collateral.input.tx_hash.as_str(),
                 user_intent_spend.ref_output_index,
@@ -80,11 +85,15 @@ pub async fn handler(
             &user_intent_mint.hash,
             user_intent_mint.size,
         )
-        .mint_redeemer_value(
-            &user_intent_mint.redeemer(HydraUserIntentRedeemer::<PlutusData>::BurnIntent, None),
-        );
+        .mint_redeemer_value(&user_intent_mint.redeemer(
+            HydraUserIntentRedeemer::<PlutusData>::BurnIntent,
+            Some(Budget {
+                mem: 7000000,
+                steps: 3000000000,
+            }),
+        ));
 
-    tx_builder
+    let _ = tx_builder
         .input_for_evaluation(&user_intent_spend.ref_utxo(&collateral)?)
         .input_for_evaluation(&user_intent_mint.ref_utxo(&collateral)?)
         .read_only_tx_in_reference(&ref_input.input.tx_hash, ref_input.input.output_index, None)
@@ -98,8 +107,7 @@ pub async fn handler(
         )
         .input_for_evaluation(&collateral)
         .change_address(&collateral.output.address)
-        .complete(None)
-        .await?;
+        .complete_sync(None);
 
     let tx_hex = tx_builder.tx_hex();
     let tx_hash = calculate_tx_hash(&tx_hex)?;
