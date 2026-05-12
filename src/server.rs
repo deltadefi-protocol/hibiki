@@ -10,8 +10,8 @@ use hibiki::{
     handler::{
         burn_expired_intents, cancel_all_account_orders, cancel_orders, fill_order,
         internal_transfer, modify_order, place_order, process_modify_order, process_order,
-        process_transfer, same_account_transferal, serialize_transfer_intent_datum,
-        sign_transaction, sign_transaction_with_fee_collector,
+        process_transfer, same_account_transferal, script_account_internal_transfer,
+        serialize_transfer_intent_datum, sign_transaction, sign_transaction_with_fee_collector,
     },
     metrics, metrics_server,
     scripts::ScriptCache,
@@ -191,6 +191,32 @@ impl Hibiki for HibikiService {
                     return Err(Status::failed_precondition(e.to_string()));
                 }
             };
+        Ok(Response::new(reply))
+    }
+
+    async fn script_account_internal_transfer(
+        &self,
+        request: Request<services::ScriptAccountInternalTransferRequest>,
+    ) -> Result<Response<services::IntentTxResponse>, Status> {
+        let request_result = request.into_inner();
+        println!(
+            "Got a request - script_account_internal_transfer {:?}",
+            request_result
+        );
+
+        let reply = match script_account_internal_transfer::handler(
+            request_result,
+            &self.config,
+            &self.scripts,
+        )
+        .await
+        {
+            Ok(value) => value,
+            Err(e) => {
+                tracing::error!(error = %e, handler = "script_account_internal_transfer", "Handler error");
+                return Err(Status::failed_precondition(e.to_string()));
+            }
+        };
         Ok(Response::new(reply))
     }
 
