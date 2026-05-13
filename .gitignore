@@ -2,3 +2,4 @@
 .env
 tarpaulin-report.html
 src/scripts/plutus.json
+src/scripts/starka-plutus.json
