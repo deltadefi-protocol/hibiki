@@ -1350,7 +1350,7 @@ dependencies = [
 [[package]]
 name = "hibiki-proto"
 version = "0.2.0"
-source = "git+https://github.com/deltadefi-protocol/deltadefi-schema.git?tag=v1.4.32#3c0e47c7b852f6c42a8d5d6b37a329a0e1d9e7ce"
+source = "git+https://github.com/deltadefi-protocol/deltadefi-schema.git?tag=v1.4.46#2e2770b5d644c9cab10d938c3e447403fc4b51a2"
 dependencies = [
  "prost 0.12.6",
  "tonic 0.10.2",

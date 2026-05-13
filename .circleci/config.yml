@@ -58,6 +58,7 @@ commands:
           name: Sync plutus.json
           command: |
             SCRIPTS_REPO="deltadefi-protocol/deltadefi-scripts"
+            VAULT_SCRIPTS_REPO="deltadefi-protocol/starka"
             echo "📦 Syncing plutus.json from ${SCRIPTS_REPO} branch: ${BRANCH_NAME}"
             if curl -sfL "https://raw.githubusercontent.com/${SCRIPTS_REPO}/${BRANCH_NAME}/plutus.json" -o src/scripts/plutus.json; then
               echo "✅ Successfully synced from branch: ${BRANCH_NAME}"
@@ -65,6 +66,14 @@ commands:
               echo "⚠️ Branch ${BRANCH_NAME} not found, falling back to main"
               curl -sfL "https://raw.githubusercontent.com/${SCRIPTS_REPO}/main/plutus.json" -o src/scripts/plutus.json
               echo "✅ Successfully synced from branch: main"
+            fi
+            echo "📦 Syncing starka plutus.json from ${VAULT_SCRIPTS_REPO} branch: ${BRANCH_NAME}"
+            if curl -sfL "https://raw.githubusercontent.com/${VAULT_SCRIPTS_REPO}/${BRANCH_NAME}/plutus.json" -o src/scripts/starka-plutus.json; then
+              echo "✅ Successfully synced from branch: ${BRANCH_NAME}"
+            else
+              echo "⚠️ Branch ${BRANCH_NAME} not found, falling back to develop"
+              curl -sfL "https://raw.githubusercontent.com/${VAULT_SCRIPTS_REPO}/develop/plutus.json" -o src/scripts/starka-plutus.json
+              echo "✅ Successfully synced from branch: develop"
             fi
 
   detect_environment:
